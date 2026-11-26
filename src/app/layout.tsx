@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { siteConfig } from "@/config/site";
 import { Navbar, Footer } from "@/components/layout";
+import { ConditionalMarketingChrome } from "@/components/layout/conditional-chrome";
 import "./globals.css";
 
 const inter = Inter({
@@ -59,9 +60,13 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <Navbar />
+        <ConditionalMarketingChrome>
+          <Navbar />
+        </ConditionalMarketingChrome>
         <div className="flex-1">{children}</div>
-        <Footer />
+        <ConditionalMarketingChrome>
+          <Footer />
+        </ConditionalMarketingChrome>
       </body>
     </html>
   );

@@ -1,0 +1,293 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return request.auth.token.role;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && role() == 'super_admin';
+    }
+
+    function isInstituteAdmin() {
+      return isAuthenticated() && role() == 'institute_admin';
+    }
+
+    function isStaff() {
+      return isAuthenticated() && role() == 'staff';
+    }
+
+    function isStudent() {
+      return isAuthenticated() && role() == 'student';
+    }
+
+    function belongsToInstitute(instituteId) {
+      return isAuthenticated() && request.auth.token.instituteId == instituteId;
+    }
+
+    function hasStaffPermission(perm) {
+      return isStaff()
+        && request.auth.token.permissions is list
+        && perm in request.auth.token.permissions;
+    }
+
+    function isActiveInstitute(instituteId) {
+      return exists(/databases/$(database)/documents/institutes/$(instituteId))
+        && get(/databases/$(database)/documents/institutes/$(instituteId)).data.status == 'active';
+    }
+
+    // Institutes:
+    // - Super Admin can read.
+    // - Institute Admin / Staff / Student can read ONLY their own active institute.
+    // - All writes (including walletBalancePaise, status, pricing) are server-only via Admin SDK.
+    match /institutes/{instituteId} {
+      allow read: if isSuperAdmin()
+        || (belongsToInstitute(instituteId) && isActiveInstitute(instituteId));
+      allow write: if false;
+    }
+
+    // User profiles:
+    // - Users can read their own profile.
+    // - Institute Admin can read staff profiles in their own institute.
+    // - Super Admin can read all profiles.
+    // - Clients cannot modify role, instituteId, studentId, permissions, or disabled.
+    match /users/{uid} {
+      allow read: if isSuperAdmin()
+        || (isAuthenticated() && request.auth.uid == uid)
+        || (isInstituteAdmin()
+            && resource.data.role == 'staff'
+            && belongsToInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    // Students:
+    // - Super Admin can read.
+    // - Institute Admin or Staff with 'students:read' can read students in their OWN active institute.
+    // - Students can read ONLY their own student document.
+    // - All writes go through server-side Admin SDK (for wallet billing, claims, and audit logs).
+    match /students/{studentId} {
+      allow read: if isSuperAdmin()
+        || ((isInstituteAdmin() || hasStaffPermission('students:read'))
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId))
+        || (isStudent()
+            && request.auth.token.studentId == studentId
+            && belongsToInstitute(resource.data.instituteId)
+            && resource.data.status == 'active'
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    // Wallet transactions:
+    // - Strictly read-only for Super Admin and authorized Institute Admin / Staff ('wallet:read').
+    // - Never writable by clients.
+    match /wallet_transactions/{txId} {
+      allow read: if isSuperAdmin()
+        || ((isInstituteAdmin() || hasStaffPermission('wallet:read'))
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    // Payment orders:
+    // - Read-only for Super Admin and owning Institute Admin.
+    // - Never writable by clients.
+    match /payment_orders/{orderId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin() && belongsToInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    // Login identifier mappings:
+    // - Strictly server-only (Admin SDK) to prevent enumeration.
+    match /login_mappings/{mappingId} {
+      allow read, write: if false;
+    }
+
+    // Audit logs:
+    // - Read-only for Super Admin. Never writable by clients.
+    match /audit_logs/{logId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    // Payment Gateway Config, History, and Webhook Events:
+    // - Strictly server-only (Admin SDK) to protect Secret Manager references and gateway metadata.
+    match /paymentGatewayConfig/{docId} {
+      allow read, write: if false;
+    }
+
+    match /gateway_config_history/{docId} {
+      allow read, write: if false;
+    }
+
+    match /webhook_events/{docId} {
+      allow read, write: if false;
+    }
+
+    // Tenant-scoped academic & operational collections (server-only writes via Admin SDK)
+    match /courses/{docId} {
+      allow read: if isSuperAdmin()
+        || ((isInstituteAdmin() || hasStaffPermission('courses:read'))
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /batches/{docId} {
+      allow read: if isSuperAdmin()
+        || ((isInstituteAdmin() || hasStaffPermission('batches:read'))
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /attendance_records/{docId} {
+      allow read: if isSuperAdmin()
+        || ((isInstituteAdmin() || hasStaffPermission('attendance:read'))
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId))
+        || (isStudent()
+            && request.auth.token.studentId == resource.data.studentId
+            && belongsToInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /student_fee_plans/{docId} {
+      allow read: if isSuperAdmin()
+        || ((isInstituteAdmin() || hasStaffPermission('fees:read'))
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /fee_payments/{docId} {
+      allow read: if isSuperAdmin()
+        || ((isInstituteAdmin() || hasStaffPermission('fees:read'))
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /examinations/{docId} {
+      allow read: if isSuperAdmin()
+        || ((isInstituteAdmin() || hasStaffPermission('exams:read'))
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /marksheets/{docId} {
+      allow read: if isSuperAdmin()
+        || ((isInstituteAdmin() || hasStaffPermission('exams:read'))
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId))
+        || (isStudent()
+            && request.auth.token.studentId == resource.data.studentId
+            && resource.data.published == true
+            && belongsToInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /certificates/{docId} {
+      allow read: if isSuperAdmin()
+        || ((isInstituteAdmin() || hasStaffPermission('certificates:read'))
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId))
+        || (isStudent()
+            && request.auth.token.studentId == resource.data.studentId
+            && belongsToInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /communication_logs/{docId} {
+      allow read: if isSuperAdmin()
+        || ((isInstituteAdmin() || hasStaffPermission('communication:send'))
+            && belongsToInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /institute_settings/{instituteId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin() && belongsToInstitute(instituteId));
+      allow write: if false;
+    }
+
+    // Enterprise Super Admin Control Center collections (server-only mutations via Admin SDK)
+    match /usageEvents/{docId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /usageAggregates/{docId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /subscriptions/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin() && belongsToInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /entitlementOverrides/{docId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /featureFlags/{docId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /emergencyActions/{docId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /platformIncidents/{docId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /securityEvents/{docId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /platform_config/{docId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /pricing_history/{docId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /subscription_plans/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /global_certificate_templates/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /platform_announcements/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // Default deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

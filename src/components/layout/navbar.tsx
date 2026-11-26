@@ -35,7 +35,7 @@ export function Navbar() {
 
           <div className="hidden items-center gap-3 lg:flex">
             <Link
-              href="/sign-in"
+              href="/login"
               className={buttonVariants({ variant: "ghost", size: "sm" })}
             >
               Sign In
@@ -89,7 +89,7 @@ export function Navbar() {
 
             <div className="border-border mt-4 flex flex-col gap-2.5 border-t pt-4">
               <Link
-                href="/sign-in"
+                href="/login"
                 onClick={close}
                 className={buttonVariants({
                   variant: "outline",
