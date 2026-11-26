@@ -12,7 +12,12 @@ export const metadata: Metadata = {
 };
 
 export default async function StudentLoginPage() {
-  const user = await getSessionUser();
+  let user = null;
+  try {
+    user = await getSessionUser();
+  } catch {
+    user = null;
+  }
   if (user?.role === "student") {
     redirect("/student/dashboard");
   }

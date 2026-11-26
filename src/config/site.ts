@@ -1,11 +1,31 @@
 import type { SiteConfig } from "@/types/site";
 
+function normalizeSiteUrl(raw: string | undefined): string {
+  if (!raw) return "http://localhost:3000";
+  let cleaned = raw.trim();
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+  if (!cleaned) return "http://localhost:3000";
+  if (!cleaned.startsWith("http://") && !cleaned.startsWith("https://")) {
+    cleaned = `https://${cleaned}`;
+  }
+  try {
+    return new URL(cleaned).toString().replace(/\/$/, "");
+  } catch {
+    return "http://localhost:3000";
+  }
+}
+
 export const siteConfig: SiteConfig = {
   name: process.env.NEXT_PUBLIC_APP_NAME ?? "CertiDesk",
   tagline: "Modern Institute Management Platform",
   description:
     "Unified SaaS platform for educational and training institutes to manage student admissions, batches, attendance, fees, examinations, marksheets, certificates, and institutional reports.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  url: normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL),
   supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@certidesk.app",
   navigation: [
     { label: "Features", href: "/#features" },
