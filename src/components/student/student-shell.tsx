@@ -34,7 +34,7 @@ import {
 } from "@/config/student-nav";
 import { getClientAuth, isFirebaseClientConfigured } from "@/lib/firebase/client";
 import { Logo } from "@/components/layout/logo";
-import { Badge } from "@/components/ui/badge";
+import { SidebarMenu, type SidebarMenuGroup } from "@/components/portal/sidebar-menu";
 import { IconButton } from "@/components/ui/icon-button";
 
 const iconMap: Record<StudentNavIcon, LucideIcon> = {
@@ -76,6 +76,21 @@ export function StudentShell({
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
   const [loggingOut, setLoggingOut] = React.useState(false);
+
+  const menuGroups = React.useMemo<SidebarMenuGroup[]>(
+    () =>
+      studentNavGroups.map((group) => ({
+        title: group.title,
+        items: group.items.map((item) => ({
+          label: item.label,
+          href: item.href,
+          icon: iconMap[item.icon],
+          badgeCount:
+            item.href === "/student/notifications" ? unreadNotificationsCount : undefined,
+        })),
+      })),
+    [unreadNotificationsCount]
+  );
 
   const pageTitle = studentRouteTitles[pathname] ?? "Student Portal";
 
@@ -136,63 +151,15 @@ export function StudentShell({
         )}
       </div>
 
-      <nav
-        aria-label="Student sidebar navigation"
-        className="flex-1 space-y-5 overflow-y-auto px-3 py-4"
-      >
-        {studentNavGroups.map((group) => (
-          <div key={group.title}>
-            {(!collapsed || isMobile) && (
-              <p className="text-muted mb-1.5 px-2.5 text-[11px] font-semibold tracking-wider uppercase">
-                {group.title}
-              </p>
-            )}
-            <ul className="space-y-1">
-              {group.items.map((item) => {
-                const Icon = iconMap[item.icon];
-                const isActive = pathname === item.href;
-
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={() => isMobile && setMobileOpen(false)}
-                      title={collapsed && !isMobile ? item.label : undefined}
-                      className={cn(
-                        "group flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
-                        isActive
-                          ? "bg-navy text-white shadow-xs"
-                          : "text-muted hover:bg-surface hover:text-foreground",
-                        collapsed && !isMobile && "justify-center px-2"
-                      )}
-                    >
-                      <span className="flex min-w-0 items-center gap-3">
-                        <Icon
-                          className={cn(
-                            "h-4 w-4 shrink-0",
-                            isActive
-                              ? "text-blue-300"
-                              : "text-muted group-hover:text-foreground"
-                          )}
-                          aria-hidden="true"
-                        />
-                        {(!collapsed || isMobile) && (
-                          <span className="truncate">{item.label}</span>
-                        )}
-                      </span>
-                      {(!collapsed || isMobile) &&
-                        item.href === "/student/notifications" &&
-                        unreadNotificationsCount > 0 && (
-                          <Badge variant="primary">{unreadNotificationsCount}</Badge>
-                        )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </nav>
+      <SidebarMenu
+        groups={menuGroups}
+        pathname={pathname}
+        collapsed={collapsed}
+        isMobile={isMobile}
+        ariaLabel="Student sidebar navigation"
+        onNavigate={() => setMobileOpen(false)}
+        isItemActive={(href, currentPath) => currentPath === href}
+      />
 
       {(!collapsed || isMobile) && (
         <div className="border-border border-t p-3">

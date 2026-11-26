@@ -63,6 +63,7 @@ import { cn } from "@/lib/cn";
 import { suNavGroups, suRouteTitles, type SuNavIcon } from "@/config/su-nav";
 import { getClientAuth, isFirebaseClientConfigured } from "@/lib/firebase/client";
 import { Logo } from "@/components/layout/logo";
+import { SidebarMenu, type SidebarMenuGroup } from "@/components/portal/sidebar-menu";
 import { Badge } from "@/components/ui/badge";
 import { IconButton } from "@/components/ui/icon-button";
 import type { SessionUser } from "@/types/auth";
@@ -131,6 +132,19 @@ export function SuShell({
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [loggingOut, setLoggingOut] = React.useState(false);
+
+  const menuGroups = React.useMemo<SidebarMenuGroup[]>(
+    () =>
+      suNavGroups.map((group) => ({
+        title: group.title,
+        items: group.items.map((item) => ({
+          label: item.label,
+          href: item.href,
+          icon: iconMap[item.icon],
+        })),
+      })),
+    []
+  );
 
   const pageTitle = React.useMemo(() => {
     if (suRouteTitles[pathname]) return suRouteTitles[pathname];
@@ -202,61 +216,21 @@ export function SuShell({
         )}
       </div>
 
-      <nav
-        aria-label="Super Admin navigation"
-        className="flex-1 space-y-5 overflow-y-auto px-3 py-4"
-      >
-        {suNavGroups.map((group) => (
-          <div key={group.title}>
-            {(!collapsed || isMobile) && (
-              <p className="text-muted mb-1.5 px-2.5 text-[11px] font-semibold tracking-wider uppercase">
-                {group.title}
-              </p>
-            )}
-            <ul className="space-y-1">
-              {group.items.map((item) => {
-                const Icon = iconMap[item.icon];
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== "/su/dashboard" &&
-                    item.href !== "/su/institutes" &&
-                    item.href !== "/su/settings" &&
-                    pathname.startsWith(`${item.href}/`));
-
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={() => isMobile && setMobileOpen(false)}
-                      title={collapsed && !isMobile ? item.label : undefined}
-                      className={cn(
-                        "group flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
-                        isActive
-                          ? "bg-navy text-white shadow-xs"
-                          : "text-muted hover:bg-surface hover:text-foreground",
-                        collapsed && !isMobile && "justify-center px-2"
-                      )}
-                    >
-                      <Icon
-                        className={cn(
-                          "h-4 w-4 shrink-0",
-                          isActive
-                            ? "text-blue-300"
-                            : "text-muted group-hover:text-foreground"
-                        )}
-                        aria-hidden="true"
-                      />
-                      {(!collapsed || isMobile) && (
-                        <span className="truncate">{item.label}</span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </nav>
+      <SidebarMenu
+        groups={menuGroups}
+        pathname={pathname}
+        collapsed={collapsed}
+        isMobile={isMobile}
+        ariaLabel="Super Admin navigation"
+        onNavigate={() => setMobileOpen(false)}
+        isItemActive={(href, currentPath) =>
+          currentPath === href ||
+          (href !== "/su/dashboard" &&
+            href !== "/su/institutes" &&
+            href !== "/su/settings" &&
+            currentPath.startsWith(`${href}/`))
+        }
+      />
     </div>
   );
 
