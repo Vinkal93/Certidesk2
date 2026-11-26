@@ -25,22 +25,23 @@ export default async function SuUsageResourcesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Resource Breakdown</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Aggregated resource consumption for {data.billingPeriod}.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         {totals.size === 0 ? (
           <Card className="md:col-span-3">
-            <CardContent className="pt-6 text-sm text-muted-foreground">
-              Insufficient data — no metered resource events recorded for {data.billingPeriod}.
+            <CardContent className="text-muted-foreground pt-6 text-sm">
+              Insufficient data — no metered resource events recorded for{" "}
+              {data.billingPeriod}.
             </CardContent>
           </Card>
         ) : (
           Array.from(totals.entries()).map(([metric, total]) => (
             <Card key={metric}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-mono">{metric}</CardTitle>
+                <CardTitle className="font-mono text-sm">{metric}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{total.toLocaleString()}</div>

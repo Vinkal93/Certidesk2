@@ -140,8 +140,12 @@ describe("Enterprise Super Admin Control Center", () => {
         planAllowlist: ["enterprise"],
         instituteOverrides: {},
       };
-      expect(evaluateFeatureFlag(flag, { instituteId: "inst_2", planId: "starter" })).toBe(false);
-      expect(evaluateFeatureFlag(flag, { instituteId: "inst_2", planId: "enterprise" })).toBe(true);
+      expect(
+        evaluateFeatureFlag(flag, { instituteId: "inst_2", planId: "starter" })
+      ).toBe(false);
+      expect(
+        evaluateFeatureFlag(flag, { instituteId: "inst_2", planId: "enterprise" })
+      ).toBe(true);
     });
   });
 
@@ -183,8 +187,12 @@ describe("Enterprise Super Admin Control Center", () => {
 
   describe("Usage Metering Period Partitioning", () => {
     it("partitions billing periods cleanly by YYYY-MM", () => {
-      expect(getCurrentBillingPeriod(new Date("2026-11-26T10:00:00.000Z"))).toBe("2026-11");
-      expect(getCurrentBillingPeriod(new Date("2026-12-01T00:00:00.000Z"))).toBe("2026-12");
+      expect(getCurrentBillingPeriod(new Date("2026-11-26T10:00:00.000Z"))).toBe(
+        "2026-11"
+      );
+      expect(getCurrentBillingPeriod(new Date("2026-12-01T00:00:00.000Z"))).toBe(
+        "2026-12"
+      );
     });
   });
 

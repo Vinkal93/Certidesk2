@@ -6,6 +6,7 @@ import { PageContainer } from "@/components/layout";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
+import { Awards } from "@/components/ui/award";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -106,6 +107,15 @@ export default async function PublicCertificateVerifyPage({
                       Revocation Reason: {cert.revokeReason}
                     </div>
                   )}
+                  <div className="pt-4">
+                    <Awards
+                      variant="stamp"
+                      title={cert.status === "issued" ? "CERTIDESK VERIFIED" : "REVOKED"}
+                      subtitle={cert.instituteName}
+                      recipient={cert.studentName}
+                      date={cert.issuedAt.slice(0, 10)}
+                    />
+                  </div>
                 </div>
               )}
 

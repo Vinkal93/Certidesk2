@@ -19,8 +19,10 @@ export default async function SuSettingsNotificationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Notification & Alert Routing</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight">
+          Notification & Alert Routing
+        </h1>
+        <p className="text-muted-foreground text-sm">
           External incident and quota alert delivery channels.
         </p>
       </div>
@@ -34,7 +36,7 @@ export default async function SuSettingsNotificationsPage() {
               </Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
+          <CardContent className="text-muted-foreground text-xs">
             {emailConfigured ? "SMTP/Resend configured." : "Not configured"}
           </CardContent>
         </Card>
@@ -47,7 +49,7 @@ export default async function SuSettingsNotificationsPage() {
               </Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
+          <CardContent className="text-muted-foreground text-xs">
             {slackConfigured ? "ALERT_WEBHOOK_URL configured." : "Not configured"}
           </CardContent>
         </Card>

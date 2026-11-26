@@ -19,7 +19,7 @@ export default async function SuEmergencyPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Emergency Operations Center</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Global kill switches, maintenance mode, and audited rollback controls.
         </p>
       </div>

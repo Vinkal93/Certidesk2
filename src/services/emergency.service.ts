@@ -89,7 +89,12 @@ function assertSuperAdmin(actor: SessionUser) {
 export function resolveActiveEmergencyState(
   state: EmergencyControlState | null,
   now = new Date()
-): { flags: EmergencyControlFlags; expired: boolean; expiresAt?: string; reason: string } {
+): {
+  flags: EmergencyControlFlags;
+  expired: boolean;
+  expiresAt?: string;
+  reason: string;
+} {
   if (!state) {
     return {
       flags: { ...DEFAULT_EMERGENCY_FLAGS },
@@ -97,7 +102,10 @@ export function resolveActiveEmergencyState(
       reason: "Normal operations",
     };
   }
-  if (state.expiresAt !== undefined && new Date(state.expiresAt).getTime() <= now.getTime()) {
+  if (
+    state.expiresAt !== undefined &&
+    new Date(state.expiresAt).getTime() <= now.getTime()
+  ) {
     return {
       flags: { ...DEFAULT_EMERGENCY_FLAGS },
       expired: true,

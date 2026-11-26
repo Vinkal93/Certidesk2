@@ -52,9 +52,7 @@ export async function listCommunicationLogs(
     throw new AuthError(403, "FORBIDDEN", "Missing communication:send permission.");
   }
   const institute = await resolveAuthorizedInstitute(actor);
-  const snap = await commLogsCol()
-    .where("instituteId", "==", institute.id)
-    .get();
+  const snap = await commLogsCol().where("instituteId", "==", institute.id).get();
   return snap.docs
     .map((d) => d.data())
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))

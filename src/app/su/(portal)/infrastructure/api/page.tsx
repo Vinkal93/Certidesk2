@@ -19,7 +19,7 @@ export default async function SuInfraApiPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">API & Serverless Functions</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           External APM and p95 latency telemetry status.
         </p>
       </div>
@@ -32,7 +32,7 @@ export default async function SuInfraApiPage() {
             </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
+        <CardContent className="text-muted-foreground text-sm">
           {apmConfigured
             ? "Cloud Monitoring sink connected."
             : "Monitoring disconnected — no external APM or request-latency sink is configured. CertiDesk does not fabricate uptime or p95 latency metrics."}

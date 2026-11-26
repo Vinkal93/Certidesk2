@@ -19,7 +19,7 @@ export default async function SuIntegrationsEmailPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Email Provider Integration</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Transactional email delivery configuration status.
         </p>
       </div>
@@ -32,7 +32,7 @@ export default async function SuIntegrationsEmailPage() {
             </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
+        <CardContent className="text-muted-foreground text-sm">
           {configured
             ? "Email provider credentials are present in server environment."
             : "Not configured — no SMTP or transactional email provider credentials are configured."}

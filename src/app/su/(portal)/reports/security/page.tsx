@@ -18,15 +18,19 @@ export default async function SuReportsSecurityPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Security & Compliance Report</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight">
+          Security & Compliance Report
+        </h1>
+        <p className="text-muted-foreground text-sm">
           Summary of authentication audits, webhook integrity, and security events.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Auth Events Audited</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Auth Events Audited
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{sec.metrics.trackedAuthEvents}</div>
@@ -34,7 +38,9 @@ export default async function SuReportsSecurityPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Rejected Webhooks</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Rejected Webhooks
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{sec.metrics.rejectedWebhooks}</div>
@@ -42,7 +48,9 @@ export default async function SuReportsSecurityPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Open Security Events</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Open Security Events
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{sec.metrics.openSecurityEvents}</div>

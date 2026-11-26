@@ -30,33 +30,38 @@ export default async function SuAnalyticsPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Enterprise Platform Analytics</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight">
+            Enterprise Platform Analytics
+          </h1>
+          <p className="text-muted-foreground text-sm">
             Live Firestore & Razorpay metrics • Range: {data.range}
           </p>
         </div>
-        <Badge variant="outline">Refreshed {new Date(data.generatedAt).toLocaleTimeString()}</Badge>
+        <Badge variant="outline">
+          Refreshed {new Date(data.generatedAt).toLocaleTimeString()}
+        </Badge>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Verified Payment Collections (LIVE)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ₹{(data.summary.verifiedPaymentCollectionsPaise / 100).toLocaleString("en-IN")}
+              ₹
+              {(data.summary.verifiedPaymentCollectionsPaise / 100).toLocaleString(
+                "en-IN"
+              )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Captured LIVE Razorpay orders
-            </p>
+            <p className="text-muted-foreground text-xs">Captured LIVE Razorpay orders</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Unspent Wallet Liability
             </CardTitle>
           </CardHeader>
@@ -64,14 +69,14 @@ export default async function SuAnalyticsPage({
             <div className="text-2xl font-bold">
               ₹{(data.summary.walletLiabilityPaise / 100).toLocaleString("en-IN")}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Institute wallet balances owed by platform
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Platform-Recognized Revenue
             </CardTitle>
           </CardHeader>
@@ -79,7 +84,7 @@ export default async function SuAnalyticsPage({
             <div className="text-2xl font-bold">
               ₹{(data.summary.recognizedRevenuePaise / 100).toLocaleString("en-IN")}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Consumed wallet debit transactions in window
             </p>
           </CardContent>
@@ -90,11 +95,11 @@ export default async function SuAnalyticsPage({
         {data.definitions.map((def) => (
           <Card key={def.key}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">{def.label}</CardTitle>
+              <CardTitle className="text-muted-foreground text-sm">{def.label}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-xl font-bold">{def.value}</div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 {def.definition} ({def.source} • {def.timeWindow})
               </p>
             </CardContent>

@@ -49,7 +49,9 @@ export async function POST(request: NextRequest) {
         featureKey: parsed.featureKey,
         enabled: parsed.enabled,
         reason: parsed.reason,
-        ...(parsed.limitOverride !== undefined ? { limitOverride: parsed.limitOverride } : {}),
+        ...(parsed.limitOverride !== undefined
+          ? { limitOverride: parsed.limitOverride }
+          : {}),
         ...(parsed.expiresAt !== undefined && parsed.expiresAt.trim() !== ""
           ? { expiresAt: parsed.expiresAt }
           : {}),

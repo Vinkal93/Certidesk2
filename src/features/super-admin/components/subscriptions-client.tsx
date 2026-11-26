@@ -88,8 +88,16 @@ export function SubscriptionsClient({
 
   return (
     <div className="space-y-6">
-      {error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
-      {notice && <p className="rounded-md bg-emerald-500/10 p-3 text-sm text-emerald-600">{notice}</p>}
+      {error && (
+        <p className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p className="rounded-md bg-emerald-500/10 p-3 text-sm text-emerald-600">
+          {notice}
+        </p>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -99,11 +107,11 @@ export function SubscriptionsClient({
           <CardContent>
             <form onSubmit={handleAssign} className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <label className="text-muted-foreground mb-1 block text-xs font-medium">
                   Institute
                 </label>
                 <select
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm"
                   value={instituteId}
                   onChange={(e) => setInstituteId(e.target.value)}
                 >
@@ -115,11 +123,11 @@ export function SubscriptionsClient({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <label className="text-muted-foreground mb-1 block text-xs font-medium">
                   Plan
                 </label>
                 <select
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm"
                   value={planId}
                   onChange={(e) => setPlanId(e.target.value)}
                 >
@@ -131,13 +139,15 @@ export function SubscriptionsClient({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <label className="text-muted-foreground mb-1 block text-xs font-medium">
                   Billing Cycle
                 </label>
                 <select
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm"
                   value={billingCycle}
-                  onChange={(e) => setBillingCycle(e.target.value as "monthly" | "yearly")}
+                  onChange={(e) =>
+                    setBillingCycle(e.target.value as "monthly" | "yearly")
+                  }
                 >
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
@@ -157,11 +167,11 @@ export function SubscriptionsClient({
           <CardContent>
             <form onSubmit={handleOverride} className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <label className="text-muted-foreground mb-1 block text-xs font-medium">
                   Institute
                 </label>
                 <select
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm"
                   value={overrideInstId}
                   onChange={(e) => setOverrideInstId(e.target.value)}
                 >
@@ -174,7 +184,7 @@ export function SubscriptionsClient({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  <label className="text-muted-foreground mb-1 block text-xs font-medium">
                     Feature / Quota Key
                   </label>
                   <Input
@@ -184,7 +194,7 @@ export function SubscriptionsClient({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  <label className="text-muted-foreground mb-1 block text-xs font-medium">
                     Limit Override
                   </label>
                   <Input
@@ -195,7 +205,7 @@ export function SubscriptionsClient({
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <label className="text-muted-foreground mb-1 block text-xs font-medium">
                   Audit Reason
                 </label>
                 <Input
@@ -215,21 +225,28 @@ export function SubscriptionsClient({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Active Subscriptions ({subscriptions.length})</CardTitle>
+          <CardTitle className="text-base">
+            Active Subscriptions ({subscriptions.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {subscriptions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No institute subscriptions assigned yet.</p>
+            <p className="text-muted-foreground text-sm">
+              No institute subscriptions assigned yet.
+            </p>
           ) : (
             subscriptions.map((s) => (
-              <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm">
+              <div
+                key={s.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm"
+              >
                 <div>
                   <span className="font-medium">{s.instituteId}</span>{" "}
-                  <Badge variant="outline">{s.planName}</Badge>{" "}
-                  <Badge>{s.status}</Badge>
+                  <Badge variant="outline">{s.planName}</Badge> <Badge>{s.status}</Badge>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  ₹{s.priceSnapshotRupees} / {s.billingCycle} • Max Students: {s.limitsSnapshot.maxStudents}
+                <div className="text-muted-foreground text-xs">
+                  ₹{s.priceSnapshotRupees} / {s.billingCycle} • Max Students:{" "}
+                  {s.limitsSnapshot.maxStudents}
                 </div>
               </div>
             ))
@@ -239,14 +256,21 @@ export function SubscriptionsClient({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Entitlement Overrides ({overrides.length})</CardTitle>
+          <CardTitle className="text-base">
+            Entitlement Overrides ({overrides.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {overrides.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No entitlement overrides configured.</p>
+            <p className="text-muted-foreground text-sm">
+              No entitlement overrides configured.
+            </p>
           ) : (
             overrides.map((o) => (
-              <div key={o.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm">
+              <div
+                key={o.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm"
+              >
                 <div>
                   <span className="font-medium">{o.instituteId}</span> •{" "}
                   <span className="font-mono text-xs">{o.featureKey}</span>{" "}
@@ -254,7 +278,7 @@ export function SubscriptionsClient({
                     {o.enabled ? "Enabled" : "Blocked"}
                   </Badge>
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-muted-foreground text-xs">
                   Limit: {o.limitOverride ?? "N/A"} • {o.reason}
                 </div>
               </div>

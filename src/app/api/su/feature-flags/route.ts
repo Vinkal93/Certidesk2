@@ -44,7 +44,12 @@ export async function POST(request: NextRequest) {
 
     if (body.action === "rollback") {
       const parsed = RollbackSchema.parse(body);
-      const flag = await rollbackFeatureFlag(actor, parsed.key, parsed.targetVersion, parsed.reason);
+      const flag = await rollbackFeatureFlag(
+        actor,
+        parsed.key,
+        parsed.targetVersion,
+        parsed.reason
+      );
       return jsonOk({ flag });
     }
 
@@ -55,7 +60,9 @@ export async function POST(request: NextRequest) {
       description: parsed.description,
       globalEnabled: parsed.globalEnabled,
       killSwitchActive: parsed.killSwitchActive,
-      ...(parsed.planAllowlist !== undefined ? { planAllowlist: parsed.planAllowlist } : {}),
+      ...(parsed.planAllowlist !== undefined
+        ? { planAllowlist: parsed.planAllowlist }
+        : {}),
       ...(parsed.instituteOverrides !== undefined
         ? { instituteOverrides: parsed.instituteOverrides }
         : {}),

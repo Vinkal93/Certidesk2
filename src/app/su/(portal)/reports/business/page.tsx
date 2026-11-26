@@ -18,24 +18,30 @@ export default async function SuReportsBusinessPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Business & Tenant Growth Report</h1>
-        <p className="text-sm text-muted-foreground">Range: {data.range}</p>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Business & Tenant Growth Report
+        </h1>
+        <p className="text-muted-foreground text-sm">Range: {data.range}</p>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Total Institutes</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Total Institutes
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.summary.totalInstitutes}</div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               {data.summary.suspendedInstitutes} suspended
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Active Institutes</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Active Institutes
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.summary.activeInstitutes}</div>
@@ -43,7 +49,9 @@ export default async function SuReportsBusinessPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Live Payment Success Rate</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Live Payment Success Rate
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">

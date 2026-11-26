@@ -16,8 +16,10 @@ export default async function SuSettingsRetentionPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Data Retention & Immutability Policy</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight">
+          Data Retention & Immutability Policy
+        </h1>
+        <p className="text-muted-foreground text-sm">
           Server-enforced retention rules for financial, audit, and usage ledgers.
         </p>
       </div>
@@ -26,16 +28,18 @@ export default async function SuSettingsRetentionPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">audit_logs & securityEvents</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1 text-xs text-muted-foreground">
+          <CardContent className="text-muted-foreground space-y-1 text-xs">
             <Badge>Immutable (Append-Only)</Badge>
             <p>Client writes and deletes are blocked in firestore.rules.</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">wallet_transactions & payment_orders</CardTitle>
+            <CardTitle className="text-sm">
+              wallet_transactions & payment_orders
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1 text-xs text-muted-foreground">
+          <CardContent className="text-muted-foreground space-y-1 text-xs">
             <Badge>Immutable Financial Ledger</Badge>
             <p>Retained indefinitely for accounting reconciliation.</p>
           </CardContent>
@@ -44,7 +48,7 @@ export default async function SuSettingsRetentionPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">usageEvents & usageAggregates</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1 text-xs text-muted-foreground">
+          <CardContent className="text-muted-foreground space-y-1 text-xs">
             <Badge>Monthly Period Partitioned</Badge>
             <p>Historical YYYY-MM aggregates are never overwritten on period rollover.</p>
           </CardContent>

@@ -19,7 +19,9 @@ export default async function SuReportsUsagePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Platform Usage Report</h1>
-        <p className="text-sm text-muted-foreground">Billing Period: {usage.billingPeriod}</p>
+        <p className="text-muted-foreground text-sm">
+          Billing Period: {usage.billingPeriod}
+        </p>
       </div>
       <Card>
         <CardHeader>
@@ -29,12 +31,14 @@ export default async function SuReportsUsagePage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {usage.aggregates.length === 0 ? (
-            <p className="text-muted-foreground">Insufficient data for {usage.billingPeriod}.</p>
+            <p className="text-muted-foreground">
+              Insufficient data for {usage.billingPeriod}.
+            </p>
           ) : (
             usage.aggregates.map((a) => (
               <div key={a.id} className="rounded-lg border p-3">
                 <span className="font-medium">{a.instituteName}</span>:{" "}
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {JSON.stringify(a.counters)}
                 </span>
               </div>

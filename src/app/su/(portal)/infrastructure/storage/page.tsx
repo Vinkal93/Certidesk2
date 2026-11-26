@@ -25,7 +25,7 @@ export default async function SuInfraStoragePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Storage & Media Assets</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Metered storage usage from usageAggregates and bucket configuration status.
         </p>
       </div>
@@ -39,7 +39,7 @@ export default async function SuInfraStoragePage() {
               </Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
+          <CardContent className="text-muted-foreground text-xs">
             {bucketConfigured
               ? process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
               : "Not configured"}
@@ -47,7 +47,9 @@ export default async function SuInfraStoragePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Metered Storage ({usage.billingPeriod})</CardTitle>
+            <CardTitle className="text-sm">
+              Metered Storage ({usage.billingPeriod})
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">

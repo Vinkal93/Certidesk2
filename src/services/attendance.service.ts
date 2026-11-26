@@ -27,9 +27,7 @@ export async function listAttendanceRecords(
     throw new AuthError(403, "FORBIDDEN", "Missing attendance:read permission.");
   }
   const institute = await resolveAuthorizedInstitute(actor);
-  const snap = await attendanceCol()
-    .where("instituteId", "==", institute.id)
-    .get();
+  const snap = await attendanceCol().where("instituteId", "==", institute.id).get();
 
   let items = snap.docs
     .map((d) => d.data())

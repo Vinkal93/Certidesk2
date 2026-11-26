@@ -21,7 +21,13 @@ export default async function SuUsageAlertsPage() {
   ]);
 
   const subByInst = new Map(subs.subscriptions.map((s) => [s.instituteId, s]));
-  const alerts: { instituteName: string; metric: string; used: number; limit: number; pct: number }[] = [];
+  const alerts: {
+    instituteName: string;
+    metric: string;
+    used: number;
+    limit: number;
+    pct: number;
+  }[] = [];
 
   for (const agg of usage.aggregates) {
     const sub = subByInst.get(agg.instituteId);
@@ -45,22 +51,28 @@ export default async function SuUsageAlertsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Quota Threshold Alerts</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Tenants exceeding 70%, 85%, 95%, or 100% of contracted limits.
         </p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Active Threshold Alerts ({alerts.length})</CardTitle>
+          <CardTitle className="text-base">
+            Active Threshold Alerts ({alerts.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {alerts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No institutes have crossed the 70% quota warning threshold in {usage.billingPeriod}.
+            <p className="text-muted-foreground text-sm">
+              No institutes have crossed the 70% quota warning threshold in{" "}
+              {usage.billingPeriod}.
             </p>
           ) : (
             alerts.map((a, idx) => (
-              <div key={idx} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+              <div
+                key={idx}
+                className="flex items-center justify-between rounded-lg border p-3 text-sm"
+              >
                 <span>
                   {a.instituteName} • {a.metric} ({a.used}/{a.limit})
                 </span>

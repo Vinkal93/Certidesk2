@@ -25,9 +25,7 @@ export async function listInstituteStudents(
     throw new AuthError(403, "FORBIDDEN", "Missing students:read permission.");
   }
   const institute = await resolveAuthorizedInstitute(actor);
-  const snap = await studentsCollection()
-    .where("instituteId", "==", institute.id)
-    .get();
+  const snap = await studentsCollection().where("instituteId", "==", institute.id).get();
   return snap.docs
     .map((d) => d.data())
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -77,9 +75,7 @@ export async function listInstituteStudentsPaginated(
 
 export async function getStudentAuditHistory(actor: SessionUser, studentId: string) {
   const student = await getInstituteStudentById(actor, studentId);
-  const snap = await auditLogsCollection()
-    .where("targetId", "==", student.id)
-    .get();
+  const snap = await auditLogsCollection().where("targetId", "==", student.id).get();
   return snap.docs
     .map((d) => d.data())
     .filter((log) => log.instituteId === student.instituteId)

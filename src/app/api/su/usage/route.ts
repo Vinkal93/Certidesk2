@@ -25,7 +25,10 @@ const RecordUsageSchema = z.object({
   unit: z.string().min(1).max(32),
   sourceOperation: z.string().min(2).max(120),
   idempotencyKey: z.string().min(2).max(120),
-  billingPeriod: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+  billingPeriod: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(),
 });
 
 export async function GET(request: NextRequest) {

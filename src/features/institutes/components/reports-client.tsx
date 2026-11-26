@@ -4,6 +4,7 @@ import * as React from "react";
 import { Download, Printer } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { DateRangePicker, type DateRange } from "@/components/ui/date-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export interface ReportSummaryRow {
@@ -15,6 +16,10 @@ export interface ReportSummaryRow {
 
 export function ReportsClient({ rows }: { rows: ReportSummaryRow[] }) {
   const [categoryFilter, setCategoryFilter] = React.useState("all");
+  const [dateRange, setDateRange] = React.useState<DateRange>({
+    from: null,
+    to: null,
+  });
 
   const categories = Array.from(new Set(rows.map((r) => r.category)));
   const filtered =
@@ -38,6 +43,12 @@ export function ReportsClient({ rows }: { rows: ReportSummaryRow[] }) {
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div>
+          <label className="text-muted mb-1.5 block text-xs font-medium">
+            Date Range
+          </label>
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+        </div>
         <div className="w-full sm:w-64">
           <Select
             label="Report Category"

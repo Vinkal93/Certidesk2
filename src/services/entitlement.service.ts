@@ -9,11 +9,7 @@ import type { SubscriptionPlanRecord } from "./su-platform.service";
 import type { SessionUser } from "@/types/auth";
 
 export type SubscriptionStatus =
-  | "active"
-  | "trialing"
-  | "past_due"
-  | "suspended"
-  | "cancelled";
+  "active" | "trialing" | "past_due" | "suspended" | "cancelled";
 
 export interface SubscriptionLimitsSnapshot {
   maxStudents: number;
@@ -124,7 +120,9 @@ export function resolveEntitlementDecision(params: {
       return {
         allowed: true,
         source: "override",
-        ...(override.limitOverride !== undefined ? { limit: override.limitOverride } : {}),
+        ...(override.limitOverride !== undefined
+          ? { limit: override.limitOverride }
+          : {}),
         ...(currentUsage !== undefined ? { currentUsage } : {}),
         reason: `Allowed by entitlement override: ${override.reason}`,
       };
@@ -235,7 +233,9 @@ export async function assignInstituteSubscription(
 
   const priceSnapshotRupees =
     input.customPriceRupees ??
-    (input.billingCycle === "yearly" ? plan.yearlyDisplayRupees : plan.monthlyDisplayRupees);
+    (input.billingCycle === "yearly"
+      ? plan.yearlyDisplayRupees
+      : plan.monthlyDisplayRupees);
 
   const existingSnap = await subscriptionsCol()
     .where("instituteId", "==", input.instituteId)

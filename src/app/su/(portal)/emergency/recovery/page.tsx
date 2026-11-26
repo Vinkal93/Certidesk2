@@ -19,8 +19,9 @@ export default async function SuEmergencyRecoveryPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Recovery & State Rollback</h1>
-        <p className="text-sm text-muted-foreground">
-          Restore prior operational control states from audited emergency action snapshots.
+        <p className="text-muted-foreground text-sm">
+          Restore prior operational control states from audited emergency action
+          snapshots.
         </p>
       </div>
       <EmergencyOpsClient

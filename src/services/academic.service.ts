@@ -23,9 +23,7 @@ export async function listCourses(actor: SessionUser): Promise<CourseRecord[]> {
     throw new AuthError(403, "FORBIDDEN", "Missing courses:read permission.");
   }
   const institute = await resolveAuthorizedInstitute(actor);
-  const snap = await coursesCol()
-    .where("instituteId", "==", institute.id)
-    .get();
+  const snap = await coursesCol().where("instituteId", "==", institute.id).get();
   return snap.docs
     .map((d) => d.data())
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -98,9 +96,7 @@ export async function listBatches(actor: SessionUser): Promise<BatchRecord[]> {
     throw new AuthError(403, "FORBIDDEN", "Missing batches:read permission.");
   }
   const institute = await resolveAuthorizedInstitute(actor);
-  const snap = await batchesCol()
-    .where("instituteId", "==", institute.id)
-    .get();
+  const snap = await batchesCol().where("instituteId", "==", institute.id).get();
   return snap.docs
     .map((d) => d.data())
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));

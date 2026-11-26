@@ -22,7 +22,7 @@ export default async function SuInfraIntegrationsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">External Integration Status</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Real configuration status for payment, email, and messaging providers.
         </p>
       </div>

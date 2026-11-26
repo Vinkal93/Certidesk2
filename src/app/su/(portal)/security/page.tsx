@@ -19,14 +19,17 @@ export default async function SuSecurityOverviewPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Security Operations Center</h1>
-        <p className="text-sm text-muted-foreground">
-          Live authentication audit events, webhook verification rejections, and account controls.
+        <p className="text-muted-foreground text-sm">
+          Live authentication audit events, webhook verification rejections, and account
+          controls.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Tracked Auth Events</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Tracked Auth Events
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.metrics.trackedAuthEvents}</div>
@@ -34,7 +37,9 @@ export default async function SuSecurityOverviewPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Failed / Denied Logins</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Failed / Denied Logins
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.metrics.failedLoginEvents}</div>
@@ -42,7 +47,9 @@ export default async function SuSecurityOverviewPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Rejected Webhooks</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Rejected Webhooks
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.metrics.rejectedWebhooks}</div>
@@ -50,7 +57,9 @@ export default async function SuSecurityOverviewPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Active Provisioned Users</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Active Provisioned Users
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.metrics.activeUsersTracked}</div>

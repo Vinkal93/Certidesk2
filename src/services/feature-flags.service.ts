@@ -106,12 +106,19 @@ export async function upsertFeatureFlag(
   }
 ): Promise<FeatureFlagRecord> {
   assertSuperAdmin(actor);
-  const normalizedKey = input.key.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, "_");
+  const normalizedKey = input.key
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]/g, "_");
   if (!normalizedKey) {
     throw new AuthError(400, "INVALID_FLAG_KEY", "Feature flag key is required.");
   }
   if (!input.reason.trim()) {
-    throw new AuthError(400, "REASON_REQUIRED", "Change reason is required for audit trail.");
+    throw new AuthError(
+      400,
+      "REASON_REQUIRED",
+      "Change reason is required for audit trail."
+    );
   }
 
   const ref = featureFlagsCol().doc(normalizedKey);
@@ -187,7 +194,11 @@ export async function rollbackFeatureFlag(
 
   const target = existing.history.find((h) => h.version === targetVersion);
   if (!target) {
-    throw new AuthError(404, "VERSION_NOT_FOUND", `Version ${targetVersion} not found in flag history.`);
+    throw new AuthError(
+      404,
+      "VERSION_NOT_FOUND",
+      `Version ${targetVersion} not found in flag history.`
+    );
   }
 
   const now = new Date().toISOString();

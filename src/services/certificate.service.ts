@@ -25,9 +25,7 @@ export async function listInstituteCertificates(
     throw new AuthError(403, "FORBIDDEN", "Missing certificates:read permission.");
   }
   const institute = await resolveAuthorizedInstitute(actor);
-  const snap = await certificatesCol()
-    .where("instituteId", "==", institute.id)
-    .get();
+  const snap = await certificatesCol().where("instituteId", "==", institute.id).get();
   return snap.docs
     .map((d) => d.data())
     .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))
@@ -168,9 +166,7 @@ export async function listStudentOwnCertificates(
   studentId: string,
   instituteId: string
 ): Promise<CertificateRecord[]> {
-  const snap = await certificatesCol()
-    .where("studentId", "==", studentId)
-    .get();
+  const snap = await certificatesCol().where("studentId", "==", studentId).get();
   return snap.docs
     .map((d) => d.data())
     .filter((c) => c.instituteId === instituteId)

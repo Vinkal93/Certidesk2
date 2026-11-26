@@ -87,7 +87,11 @@ export const suNavGroups: SuNavGroup[] = [
     items: [
       { label: "Payments", href: "/su/payments", icon: "creditCard" },
       { label: "Wallet Management", href: "/su/wallets", icon: "wallet" },
-      { label: "Platform Transactions", href: "/su/transactions", icon: "arrowLeftRight" },
+      {
+        label: "Platform Transactions",
+        href: "/su/transactions",
+        icon: "arrowLeftRight",
+      },
       { label: "Refund Management", href: "/su/refunds", icon: "rotateCcw" },
       { label: "Revenue Reports", href: "/su/reports/financial", icon: "trendingUp" },
     ],
@@ -129,7 +133,11 @@ export const suNavGroups: SuNavGroup[] = [
       { label: "Maintenance Mode", href: "/su/emergency/maintenance", icon: "wrench" },
       { label: "Platform Lockdown", href: "/su/emergency/lockdown", icon: "shieldAlert" },
       { label: "Service Restrictions", href: "/su/emergency/restrictions", icon: "ban" },
-      { label: "Incident Management", href: "/su/emergency/incidents", icon: "alertTriangle" },
+      {
+        label: "Incident Management",
+        href: "/su/emergency/incidents",
+        icon: "alertTriangle",
+      },
       { label: "Recovery Operations", href: "/su/emergency/recovery", icon: "lifeBuoy" },
     ],
   },
@@ -137,20 +145,40 @@ export const suNavGroups: SuNavGroup[] = [
     title: "INFRASTRUCTURE",
     items: [
       { label: "System Health", href: "/su/system-health", icon: "activity" },
-      { label: "Firebase Monitoring", href: "/su/infrastructure/firebase", icon: "database" },
+      {
+        label: "Firebase Monitoring",
+        href: "/su/infrastructure/firebase",
+        icon: "database",
+      },
       { label: "API Monitoring", href: "/su/infrastructure/api", icon: "server" },
-      { label: "Storage Monitoring", href: "/su/infrastructure/storage", icon: "hardDrive" },
+      {
+        label: "Storage Monitoring",
+        href: "/su/infrastructure/storage",
+        icon: "hardDrive",
+      },
       { label: "Background Jobs", href: "/su/infrastructure/jobs", icon: "clock" },
-      { label: "Integration Health", href: "/su/infrastructure/integrations", icon: "plug" },
+      {
+        label: "Integration Health",
+        href: "/su/infrastructure/integrations",
+        icon: "plug",
+      },
     ],
   },
   {
     title: "INTEGRATIONS",
     items: [
-      { label: "Razorpay", href: "/su/settings/payment-gateway/razorpay", icon: "creditCard" },
+      {
+        label: "Razorpay",
+        href: "/su/settings/payment-gateway/razorpay",
+        icon: "creditCard",
+      },
       { label: "Webhooks", href: "/su/integrations/webhooks", icon: "webhook" },
       { label: "Email Provider", href: "/su/integrations/email", icon: "mail" },
-      { label: "WhatsApp/SMS Provider", href: "/su/integrations/messaging", icon: "messageSquare" },
+      {
+        label: "WhatsApp/SMS Provider",
+        href: "/su/integrations/messaging",
+        icon: "messageSquare",
+      },
     ],
   },
   {

@@ -19,8 +19,9 @@ export default async function SuEmergencyLockdownPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Read-Only Lockdown</h1>
-        <p className="text-sm text-muted-foreground">
-          Freeze platform write operations during security or data integrity investigations.
+        <p className="text-muted-foreground text-sm">
+          Freeze platform write operations during security or data integrity
+          investigations.
         </p>
       </div>
       <EmergencyOpsClient

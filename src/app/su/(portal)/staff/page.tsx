@@ -21,7 +21,7 @@ export default async function SuStaffPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Institute Staff Directory</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Cross-tenant view of provisioned institute staff accounts.
         </p>
       </div>
@@ -31,13 +31,18 @@ export default async function SuStaffPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           {staff.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No institute staff accounts found.</p>
+            <p className="text-muted-foreground text-sm">
+              No institute staff accounts found.
+            </p>
           ) : (
             staff.map((s) => (
-              <div key={s.uid} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm">
+              <div
+                key={s.uid}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm"
+              >
                 <div>
                   <span className="font-medium">{s.displayName}</span>{" "}
-                  <span className="text-xs text-muted-foreground">({s.email})</span>
+                  <span className="text-muted-foreground text-xs">({s.email})</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{s.instituteId ?? "Unassigned"}</Badge>

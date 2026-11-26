@@ -64,9 +64,7 @@ export async function getEnterpriseAnalytics(
   const rangeInstitutes = cutoff
     ? institutes.filter((i) => i.createdAt >= cutoff)
     : institutes;
-  const rangePayments = cutoff
-    ? payments.filter((p) => p.createdAt >= cutoff)
-    : payments;
+  const rangePayments = cutoff ? payments.filter((p) => p.createdAt >= cutoff) : payments;
   const rangeWalletTxs = cutoff
     ? walletTxs.filter((t) => t.createdAt >= cutoff)
     : walletTxs;
@@ -209,9 +207,7 @@ export async function getEnterpriseAnalytics(
     {
       key: "subscriptions_count",
       label: "Active Subscriptions",
-      value: String(
-        subsSnap.docs.filter((d) => d.data().status === "active").length
-      ),
+      value: String(subsSnap.docs.filter((d) => d.data().status === "active").length),
       definition: "Active institute plan subscriptions.",
       source: "subscriptions",
       timeWindow: "Current snapshot",

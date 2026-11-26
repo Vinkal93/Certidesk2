@@ -19,8 +19,9 @@ export default async function SuSubscriptionsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Institute Subscriptions</h1>
-        <p className="text-sm text-muted-foreground">
-          Assign plans with immutable price & quota snapshots. Historical subscriptions preserve contracted rates.
+        <p className="text-muted-foreground text-sm">
+          Assign plans with immutable price & quota snapshots. Historical subscriptions
+          preserve contracted rates.
         </p>
       </div>
       <SubscriptionsClient {...data} />

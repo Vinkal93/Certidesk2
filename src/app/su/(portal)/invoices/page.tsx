@@ -14,14 +14,17 @@ export default async function SuInvoicesPage() {
   const user = await getSessionUser();
   if (!user || user.role !== "super_admin") redirect("/su");
 
-  const snap = await paymentOrdersCollection().orderBy("createdAt", "desc").limit(100).get();
+  const snap = await paymentOrdersCollection()
+    .orderBy("createdAt", "desc")
+    .limit(100)
+    .get();
   const captured = snap.docs.map((d) => d.data()).filter((o) => o.status === "captured");
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Invoices & Payment Receipts</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Captured Razorpay payment orders recorded in Firestore.
         </p>
       </div>
@@ -31,17 +34,24 @@ export default async function SuInvoicesPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           {captured.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No captured payment orders found.</p>
+            <p className="text-muted-foreground text-sm">
+              No captured payment orders found.
+            </p>
           ) : (
             captured.map((o) => (
-              <div key={o.orderId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm">
+              <div
+                key={o.orderId}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm"
+              >
                 <div>
                   <span className="font-mono text-xs font-semibold">{o.orderId}</span> •{" "}
                   <span>{o.instituteId}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{o.environment}</Badge>
-                  <span className="font-semibold">₹{(o.amountPaise / 100).toFixed(2)}</span>
+                  <span className="font-semibold">
+                    ₹{(o.amountPaise / 100).toFixed(2)}
+                  </span>
                 </div>
               </div>
             ))

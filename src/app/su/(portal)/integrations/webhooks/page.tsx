@@ -14,14 +14,19 @@ export default async function SuIntegrationsWebhooksPage() {
   const user = await getSessionUser();
   if (!user || user.role !== "super_admin") redirect("/su");
 
-  const snap = await webhookEventsCollection().orderBy("receivedAt", "desc").limit(60).get();
+  const snap = await webhookEventsCollection()
+    .orderBy("receivedAt", "desc")
+    .limit(60)
+    .get();
   const events = snap.docs.map((d) => d.data());
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Webhook Delivery & Signature Logs</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight">
+          Webhook Delivery & Signature Logs
+        </h1>
+        <p className="text-muted-foreground text-sm">
           Inbound Razorpay webhook events verified against HMAC-SHA256.
         </p>
       </div>
@@ -31,10 +36,15 @@ export default async function SuIntegrationsWebhooksPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           {events.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No webhook events received yet.</p>
+            <p className="text-muted-foreground text-sm">
+              No webhook events received yet.
+            </p>
           ) : (
             events.map((ev) => (
-              <div key={ev.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-xs">
+              <div
+                key={ev.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-xs"
+              >
                 <div>
                   <span className="font-mono font-semibold">{ev.eventType}</span> •{" "}
                   <span>{ev.id}</span>

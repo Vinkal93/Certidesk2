@@ -85,10 +85,7 @@ export async function recordUsageEvent(input: {
   const aggRef = usageAggregatesCol().doc(aggId);
 
   return db.runTransaction(async (tx) => {
-    const [eventSnap, aggSnap] = await Promise.all([
-      tx.get(eventRef),
-      tx.get(aggRef),
-    ]);
+    const [eventSnap, aggSnap] = await Promise.all([tx.get(eventRef), tx.get(aggRef)]);
 
     const existingAgg = aggSnap.data();
     const currentVal = existingAgg?.counters?.[input.metricKey] ?? 0;

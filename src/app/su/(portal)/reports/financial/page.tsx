@@ -18,25 +18,35 @@ export default async function SuReportsFinancialPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Financial Reconciliation Report</h1>
-        <p className="text-sm text-muted-foreground">
-          Strictly separates captured collections, wallet liability, and recognized revenue ({data.range}).
+        <h1 className="text-2xl font-bold tracking-tight">
+          Financial Reconciliation Report
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          Strictly separates captured collections, wallet liability, and recognized
+          revenue ({data.range}).
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Verified Live Collections</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Verified Live Collections
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ₹{(data.summary.verifiedPaymentCollectionsPaise / 100).toLocaleString("en-IN")}
+              ₹
+              {(data.summary.verifiedPaymentCollectionsPaise / 100).toLocaleString(
+                "en-IN"
+              )}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Unspent Wallet Liability</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Unspent Wallet Liability
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -46,7 +56,9 @@ export default async function SuReportsFinancialPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Recognized Revenue</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">
+              Recognized Revenue
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Flag, RotateCcw, ShieldAlert } from "lucide-react";
+import { useActionFeedback } from "@/components/ui/action-feedback-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ interface Props {
 
 export function FeatureFlagsClient({ initialFlags }: Props) {
   const router = useRouter();
+  const { confirm, runWithBanner } = useActionFeedback();
   const [flags, setFlags] = useState<FeatureFlagRecord[]>(initialFlags);
   const [key, setKey] = useState("");
   const [name, setName] = useState("");
@@ -78,58 +80,92 @@ export function FeatureFlagsClient({ initialFlags }: Props) {
 
   async function handleToggleKillSwitch(flag: FeatureFlagRecord) {
     const nextKill = !flag.killSwitchActive;
-    const changeReason = window.prompt(
-      `Reason for ${nextKill ? "ACTIVATING kill switch" : "deactivating kill switch"} on ${flag.key}:`
-    );
-    if (!changeReason?.trim()) return;
-    setError(null);
-    const res = await fetch("/api/su/feature-flags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "upsert",
-        key: flag.key,
-        name: flag.name,
-        description: flag.description,
-        globalEnabled: flag.globalEnabled,
-        killSwitchActive: nextKill,
-        planAllowlist: flag.planAllowlist,
-        instituteOverrides: flag.instituteOverrides,
-        reason: changeReason.trim(),
-      }),
+    const resConfirm = await confirm({
+      title: `${nextKill ? "Activate" : "Release"} kill switch for ${flag.key}?`,
+      description: nextKill
+        ? "This immediately forces the feature OFF across all institutes and plans."
+        : "This restores normal flag evaluation rules.",
+      confirmLabel: nextKill ? "Activate Kill Switch" : "Release Kill Switch",
+      tone: nextKill ? "destructive" : "warning",
+      requireReason: true,
+      reasonLabel: "Audit Reason",
+      reasonPlaceholder: "Incident mitigation or verified recovery",
     });
-    if (!res.ok) {
-      const json = (await res.json()) as { error?: { message?: string } };
-      setError(json.error?.message ?? "Failed to toggle kill switch.");
-      return;
+    if (!resConfirm.confirmed) return;
+    setError(null);
+    try {
+      await runWithBanner({
+        title: `Updating kill switch for ${flag.key}`,
+        successTitle: "Kill switch updated",
+        tone: "warning",
+        task: async () => {
+          const res = await fetch("/api/su/feature-flags", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "upsert",
+              key: flag.key,
+              name: flag.name,
+              description: flag.description,
+              globalEnabled: flag.globalEnabled,
+              killSwitchActive: nextKill,
+              planAllowlist: flag.planAllowlist,
+              instituteOverrides: flag.instituteOverrides,
+              reason: resConfirm.reason,
+            }),
+          });
+          if (!res.ok) {
+            const json = (await res.json()) as { error?: { message?: string } };
+            throw new Error(json.error?.message ?? "Failed to toggle kill switch.");
+          }
+        },
+      });
+      setNotice(`Updated kill switch for ${flag.key}.`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to toggle kill switch.");
     }
-    setNotice(`Updated kill switch for ${flag.key}.`);
-    await refresh();
   }
 
   async function handleRollback(flag: FeatureFlagRecord, targetVersion: number) {
-    const changeReason = window.prompt(
-      `Reason for rolling back ${flag.key} to v${targetVersion}:`
-    );
-    if (!changeReason?.trim()) return;
-    setError(null);
-    const res = await fetch("/api/su/feature-flags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "rollback",
-        key: flag.key,
-        targetVersion,
-        reason: changeReason.trim(),
-      }),
+    const resConfirm = await confirm({
+      title: `Rollback ${flag.key} to v${targetVersion}?`,
+      description:
+        "Restores the previous feature flag configuration and logs an audit entry.",
+      confirmLabel: `Rollback to v${targetVersion}`,
+      tone: "warning",
+      requireReason: true,
+      reasonLabel: "Rollback Reason",
     });
-    if (!res.ok) {
-      const json = (await res.json()) as { error?: { message?: string } };
-      setError(json.error?.message ?? "Failed to rollback feature flag.");
-      return;
+    if (!resConfirm.confirmed) return;
+    setError(null);
+    try {
+      await runWithBanner({
+        title: `Rolling back ${flag.key} to v${targetVersion}`,
+        successTitle: "Feature flag rolled back",
+        tone: "info",
+        task: async () => {
+          const res = await fetch("/api/su/feature-flags", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "rollback",
+              key: flag.key,
+              targetVersion,
+              reason: resConfirm.reason,
+            }),
+          });
+          if (!res.ok) {
+            const json = (await res.json()) as { error?: { message?: string } };
+            throw new Error(json.error?.message ?? "Failed to rollback feature flag.");
+          }
+        },
+      });
+      setNotice(`Rolled back ${flag.key} to v${targetVersion}.`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to rollback feature flag.");
     }
-    setNotice(`Rolled back ${flag.key} to v${targetVersion}.`);
-    await refresh();
   }
 
   return (
@@ -137,14 +173,14 @@ export function FeatureFlagsClient({ initialFlags }: Props) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Flag className="h-4 w-4 text-primary" />
+            <Flag className="text-primary h-4 w-4" />
             Create or Update Feature Flag
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSave} className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label className="text-muted-foreground mb-1 block text-xs font-medium">
                 Flag Key
               </label>
               <Input
@@ -155,7 +191,7 @@ export function FeatureFlagsClient({ initialFlags }: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label className="text-muted-foreground mb-1 block text-xs font-medium">
                 Display Name
               </label>
               <Input
@@ -166,7 +202,7 @@ export function FeatureFlagsClient({ initialFlags }: Props) {
               />
             </div>
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label className="text-muted-foreground mb-1 block text-xs font-medium">
                 Description
               </label>
               <Input
@@ -176,7 +212,7 @@ export function FeatureFlagsClient({ initialFlags }: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label className="text-muted-foreground mb-1 block text-xs font-medium">
                 Plan Allowlist (comma-separated IDs, optional)
               </label>
               <Input
@@ -186,7 +222,7 @@ export function FeatureFlagsClient({ initialFlags }: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label className="text-muted-foreground mb-1 block text-xs font-medium">
                 Audit Reason (Required)
               </label>
               <Input
@@ -205,7 +241,7 @@ export function FeatureFlagsClient({ initialFlags }: Props) {
                 />
                 Globally Enabled
               </label>
-              <label className="flex items-center gap-2 text-sm text-destructive">
+              <label className="text-destructive flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   checked={killSwitchActive}
@@ -214,7 +250,7 @@ export function FeatureFlagsClient({ initialFlags }: Props) {
                 Kill Switch Active (Forces OFF everywhere)
               </label>
             </div>
-            {error && <p className="text-sm text-destructive md:col-span-2">{error}</p>}
+            {error && <p className="text-destructive text-sm md:col-span-2">{error}</p>}
             {notice && <p className="text-sm text-emerald-600 md:col-span-2">{notice}</p>}
             <div className="md:col-span-2">
               <Button type="submit" disabled={submitting}>
@@ -227,12 +263,15 @@ export function FeatureFlagsClient({ initialFlags }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Active Platform Feature Flags ({flags.length})</CardTitle>
+          <CardTitle className="text-base">
+            Active Platform Feature Flags ({flags.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {flags.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No feature flags configured yet. Create a flag above to control module rollouts and kill switches.
+            <p className="text-muted-foreground text-sm">
+              No feature flags configured yet. Create a flag above to control module
+              rollouts and kill switches.
             </p>
           ) : (
             flags.map((flag) => (
@@ -243,7 +282,15 @@ export function FeatureFlagsClient({ initialFlags }: Props) {
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-semibold">{flag.key}</span>
-                    <Badge variant={flag.killSwitchActive ? "danger" : flag.globalEnabled ? "success" : "outline"}>
+                    <Badge
+                      variant={
+                        flag.killSwitchActive
+                          ? "danger"
+                          : flag.globalEnabled
+                            ? "success"
+                            : "outline"
+                      }
+                    >
                       {flag.killSwitchActive
                         ? "KILL SWITCH ACTIVE"
                         : flag.globalEnabled
@@ -254,11 +301,13 @@ export function FeatureFlagsClient({ initialFlags }: Props) {
                   </div>
                   <p className="text-sm font-medium">{flag.name}</p>
                   {flag.description && (
-                    <p className="text-xs text-muted-foreground">{flag.description}</p>
+                    <p className="text-muted-foreground text-xs">{flag.description}</p>
                   )}
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     Updated {new Date(flag.updatedAt).toLocaleString()} • Plans:{" "}
-                    {flag.planAllowlist.length > 0 ? flag.planAllowlist.join(", ") : "All plans"}
+                    {flag.planAllowlist.length > 0
+                      ? flag.planAllowlist.join(", ")
+                      : "All plans"}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -269,7 +318,9 @@ export function FeatureFlagsClient({ initialFlags }: Props) {
                     onClick={() => handleToggleKillSwitch(flag)}
                   >
                     <ShieldAlert className="mr-1.5 h-3.5 w-3.5" />
-                    {flag.killSwitchActive ? "Release Kill Switch" : "Trigger Kill Switch"}
+                    {flag.killSwitchActive
+                      ? "Release Kill Switch"
+                      : "Trigger Kill Switch"}
                   </Button>
                   {flag.history.length > 0 && (
                     <Button

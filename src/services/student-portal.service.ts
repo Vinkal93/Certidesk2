@@ -186,8 +186,8 @@ export async function getStudentExamsAndResults(actor: SessionUser) {
     db.collection("marksheets").where("studentId", "==", student.id).get(),
   ]);
 
-  const exams = (examsSnap.docs.map((d) => d.data()) as ExaminationRecord[]).sort((a, b) =>
-    b.examDate.localeCompare(a.examDate)
+  const exams = (examsSnap.docs.map((d) => d.data()) as ExaminationRecord[]).sort(
+    (a, b) => b.examDate.localeCompare(a.examDate)
   );
   // Students can ONLY see results after publication
   const publishedMarksheets = marksheetsSnap.docs

@@ -19,21 +19,30 @@ export default async function SuSecurityLoginsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Authentication & Login Activity</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight">
+          Authentication & Login Activity
+        </h1>
+        <p className="text-muted-foreground text-sm">
           Recent authentication and session events from immutable audit_logs.
         </p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Auth Audit Stream ({data.loginAudits.length})</CardTitle>
+          <CardTitle className="text-base">
+            Auth Audit Stream ({data.loginAudits.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {data.loginAudits.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No authentication events recorded.</p>
+            <p className="text-muted-foreground text-sm">
+              No authentication events recorded.
+            </p>
           ) : (
             data.loginAudits.map((a) => (
-              <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-xs">
+              <div
+                key={a.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-xs"
+              >
                 <div>
                   <Badge variant="outline">{a.action}</Badge>{" "}
                   <span className="ml-2 font-mono">{a.actorUid}</span> ({a.actorRole})

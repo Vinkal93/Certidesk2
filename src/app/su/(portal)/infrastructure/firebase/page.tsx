@@ -42,8 +42,10 @@ export default async function SuInfraFirebasePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Firebase & Firestore Diagnostics</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight">
+            Firebase & Firestore Diagnostics
+          </h1>
+          <p className="text-muted-foreground text-sm">
             Live Firestore Admin SDK connectivity and collection document counts.
           </p>
         </div>
@@ -52,7 +54,7 @@ export default async function SuInfraFirebasePage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">institutes</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">institutes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.institutes}</div>
@@ -60,7 +62,7 @@ export default async function SuInfraFirebasePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">users</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">users</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.users}</div>
@@ -68,7 +70,7 @@ export default async function SuInfraFirebasePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">students</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">students</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.students}</div>
@@ -76,7 +78,7 @@ export default async function SuInfraFirebasePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">audit_logs</CardTitle>
+            <CardTitle className="text-muted-foreground text-sm">audit_logs</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.audits}</div>

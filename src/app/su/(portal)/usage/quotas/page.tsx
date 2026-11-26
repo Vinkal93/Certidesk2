@@ -24,17 +24,22 @@ export default async function SuUsageQuotasPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Quotas & Plan Limits</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Configured plan limits and per-institute overrides for {usage.billingPeriod}.
         </p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Plan Quota Catalog ({subs.plans.length})</CardTitle>
+          <CardTitle className="text-base">
+            Plan Quota Catalog ({subs.plans.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {subs.plans.map((p) => (
-            <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm">
+            <div
+              key={p.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm"
+            >
               <span className="font-medium">{p.name}</span>
               <div className="flex gap-2">
                 <Badge variant="outline">Students: {p.maxStudents}</Badge>

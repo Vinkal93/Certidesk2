@@ -115,6 +115,21 @@
   --color-warning-soft: var(--color-warning-soft);
   --color-danger-soft: var(--color-danger-soft);
 
+  /* shadcn/ui semantic tokens */
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-muted-foreground: #64748b;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f1f5f9;
+  --color-secondary-foreground: #0f172a;
+  --color-destructive: #dc2626;
+  --color-ring: #2563eb;
+  --color-input: #e2e8f0;
+  --color-chart-1: #2563eb;
+  --color-chart-2: #16a34a;
+  --color-chart-3: #0284c7;
+  --color-chart-5: #d97706;
+
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 

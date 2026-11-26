@@ -19,7 +19,7 @@ export default async function SuModulesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Platform Module Controls</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Enable or disable product modules and emergency kill switches across tenants.
         </p>
       </div>

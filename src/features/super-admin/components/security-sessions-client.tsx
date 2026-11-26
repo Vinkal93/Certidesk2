@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Ban } from "lucide-react";
+import { useActionFeedback } from "@/components/ui/action-feedback-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,32 +26,51 @@ export function SecuritySessionsClient({
   currentUid: string;
 }) {
   const router = useRouter();
+  const { confirm, runWithBanner } = useActionFeedback();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   async function handleRevoke(user: ManageableUser) {
-    const reason = window.prompt(
-      `Revoke all active refresh tokens for ${user.email} (${user.role})? Enter audit reason:`
-    );
-    if (!reason?.trim()) return;
+    const resConfirm = await confirm({
+      title: `Revoke active sessions for ${user.email}?`,
+      description: `All Firebase refresh tokens for ${user.name} (${user.role}) will be invalidated immediately.`,
+      confirmLabel: "Revoke Sessions",
+      tone: "destructive",
+      requireReason: true,
+      reasonLabel: "Audit Reason",
+      reasonPlaceholder: "Suspected compromise or role termination",
+    });
+    if (!resConfirm.confirmed) return;
     setError(null);
     setNotice(null);
 
-    const res = await fetch("/api/su/security/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        targetUid: user.uid,
-        reason: reason.trim(),
-      }),
-    });
-    const json = (await res.json()) as { error?: { message?: string } };
-    if (!res.ok) {
-      setError(json.error?.message ?? "Failed to revoke sessions.");
-      return;
+    try {
+      await runWithBanner({
+        title: `Revoking sessions for ${user.email}`,
+        successTitle: "Sessions revoked",
+        successDescription: `All active sessions invalidated for ${user.email}.`,
+        errorTitle: "Session revocation failed",
+        tone: "warning",
+        task: async () => {
+          const res = await fetch("/api/su/security/sessions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              targetUid: user.uid,
+              reason: resConfirm.reason,
+            }),
+          });
+          const json = (await res.json()) as { error?: { message?: string } };
+          if (!res.ok) {
+            throw new Error(json.error?.message ?? "Failed to revoke sessions.");
+          }
+        },
+      });
+      setNotice(`Revoked all active sessions for ${user.email}.`);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to revoke sessions.");
     }
-    setNotice(`Revoked all active sessions for ${user.email}.`);
-    router.refresh();
   }
 
   return (
@@ -59,7 +79,7 @@ export function SecuritySessionsClient({
         <CardTitle className="text-base">Active Accounts & Session Revocation</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && <p className="text-destructive text-sm">{error}</p>}
         {notice && <p className="text-sm text-emerald-600">{notice}</p>}
         {users.map((u) => (
           <div
@@ -74,7 +94,7 @@ export function SecuritySessionsClient({
                   {u.status}
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 {u.email} • UID: {u.uid}
               </p>
             </div>

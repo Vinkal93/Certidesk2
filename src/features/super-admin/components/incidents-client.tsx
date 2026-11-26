@@ -61,7 +61,7 @@ export function IncidentsClient({ initialIncidents }: Props) {
   async function handleStatusUpdate(id: string, status: IncidentStatus) {
     const resolutionSummary =
       status === "resolved"
-        ? window.prompt("Resolution summary:") ?? "Resolved by Super Admin"
+        ? (window.prompt("Resolution summary:") ?? "Resolved by Super Admin")
         : undefined;
     const res = await fetch("/api/su/incidents", {
       method: "PATCH",
@@ -88,7 +88,7 @@ export function IncidentsClient({ initialIncidents }: Props) {
         <CardContent>
           <form onSubmit={handleCreate} className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label className="text-muted-foreground mb-1 block text-xs font-medium">
                 Incident Title
               </label>
               <Input
@@ -99,11 +99,11 @@ export function IncidentsClient({ initialIncidents }: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label className="text-muted-foreground mb-1 block text-xs font-medium">
                 Severity
               </label>
               <select
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm"
                 value={severity}
                 onChange={(e) => setSeverity(e.target.value as IncidentSeverity)}
               >
@@ -114,7 +114,7 @@ export function IncidentsClient({ initialIncidents }: Props) {
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label className="text-muted-foreground mb-1 block text-xs font-medium">
                 Description
               </label>
               <Input
@@ -125,15 +125,12 @@ export function IncidentsClient({ initialIncidents }: Props) {
               />
             </div>
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label className="text-muted-foreground mb-1 block text-xs font-medium">
                 Affected Components (comma-separated)
               </label>
-              <Input
-                value={components}
-                onChange={(e) => setComponents(e.target.value)}
-              />
+              <Input value={components} onChange={(e) => setComponents(e.target.value)} />
             </div>
-            {error && <p className="text-sm text-destructive md:col-span-2">{error}</p>}
+            {error && <p className="text-destructive text-sm md:col-span-2">{error}</p>}
             <div className="md:col-span-2">
               <Button type="submit" disabled={submitting}>
                 {submitting ? "Recording..." : "Create Incident"}
@@ -145,11 +142,13 @@ export function IncidentsClient({ initialIncidents }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Incident Log ({initialIncidents.length})</CardTitle>
+          <CardTitle className="text-base">
+            Incident Log ({initialIncidents.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {initialIncidents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No incidents recorded.</p>
+            <p className="text-muted-foreground text-sm">No incidents recorded.</p>
           ) : (
             initialIncidents.map((inc) => (
               <div
@@ -167,7 +166,7 @@ export function IncidentsClient({ initialIncidents }: Props) {
                     </Badge>
                   </div>
                   <p className="font-medium">{inc.title}</p>
-                  <p className="text-xs text-muted-foreground">{inc.description}</p>
+                  <p className="text-muted-foreground text-xs">{inc.description}</p>
                   {inc.resolutionSummary && (
                     <p className="text-xs text-emerald-600">
                       Resolution: {inc.resolutionSummary}

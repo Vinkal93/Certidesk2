@@ -17,7 +17,7 @@ export default async function SuInfraJobsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Background Jobs & Queues</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           External worker queue telemetry status.
         </p>
       </div>
@@ -28,8 +28,9 @@ export default async function SuInfraJobsPage() {
             <Badge variant="outline">Not configured</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Not configured — no external background job queue is connected to this environment.
+        <CardContent className="text-muted-foreground text-sm">
+          Not configured — no external background job queue is connected to this
+          environment.
         </CardContent>
       </Card>
     </div>

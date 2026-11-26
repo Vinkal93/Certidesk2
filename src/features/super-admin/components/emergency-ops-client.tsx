@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, RotateCcw, ShieldAlert } from "lucide-react";
+import { useActionFeedback } from "@/components/ui/action-feedback-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +29,7 @@ export function EmergencyOpsClient({
   initialActions,
 }: Props) {
   const router = useRouter();
+  const { confirm, runWithBanner } = useActionFeedback();
   const [flags, setFlags] = useState<EmergencyControlFlags>(initialFlags);
   const [reason, setReason] = useState("");
   const [expiresInMinutes, setExpiresInMinutes] = useState("60");
@@ -60,35 +62,62 @@ export function EmergencyOpsClient({
       setReason("");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update emergency controls.");
+      setError(
+        err instanceof Error ? err.message : "Failed to update emergency controls."
+      );
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleRollback(actionId: string) {
-    const rbReason = window.prompt(`Reason for rolling back action ${actionId}:`);
-    if (!rbReason?.trim()) return;
-    setError(null);
-    const res = await fetch("/api/su/emergency", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "rollback",
-        actionId,
-        reason: rbReason.trim(),
-      }),
+    const resConfirm = await confirm({
+      title: `Rollback emergency action ${actionId}?`,
+      description: "Restores the platform emergency flags to their prior state.",
+      confirmLabel: "Rollback State",
+      tone: "warning",
+      requireReason: true,
+      reasonLabel: "Rollback Reason",
     });
-    if (!res.ok) {
-      const json = (await res.json()) as { error?: { message?: string } };
-      setError(json.error?.message ?? "Failed to rollback emergency action.");
-      return;
+    if (!resConfirm.confirmed) return;
+    setError(null);
+    try {
+      await runWithBanner({
+        title: `Rolling back ${actionId}`,
+        successTitle: "Emergency state rolled back",
+        tone: "info",
+        task: async () => {
+          const res = await fetch("/api/su/emergency", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "rollback",
+              actionId,
+              reason: resConfirm.reason,
+            }),
+          });
+          if (!res.ok) {
+            const json = (await res.json()) as { error?: { message?: string } };
+            throw new Error(
+              json.error?.message ?? "Failed to rollback emergency action."
+            );
+          }
+        },
+      });
+      setNotice(`Rolled back ${actionId}.`);
+      router.refresh();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to rollback emergency action."
+      );
     }
-    setNotice(`Rolled back ${actionId}.`);
-    router.refresh();
   }
 
-  const controlItems: { key: keyof EmergencyControlFlags; label: string; desc: string }[] = [
+  const controlItems: {
+    key: keyof EmergencyControlFlags;
+    label: string;
+    desc: string;
+  }[] = [
     {
       key: "maintenanceMode",
       label: "Maintenance Mode",
@@ -121,17 +150,18 @@ export function EmergencyOpsClient({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <ShieldAlert className="h-4 w-4 text-destructive" />
+            <ShieldAlert className="text-destructive h-4 w-4" />
             Platform Emergency Controls
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-lg border bg-muted/40 p-3 text-xs">
+          <div className="bg-muted/40 rounded-lg border p-3 text-xs">
             <span className="font-medium">Current Status: </span>
             <span>{initialReason}</span>
             {initialExpiresAt && (
-              <span className="ml-2 text-muted-foreground">
-                ({initialExpired ? "Expired" : "Expires"}: {new Date(initialExpiresAt).toLocaleString()})
+              <span className="text-muted-foreground ml-2">
+                ({initialExpired ? "Expired" : "Expires"}:{" "}
+                {new Date(initialExpiresAt).toLocaleString()})
               </span>
             )}
           </div>
@@ -141,7 +171,7 @@ export function EmergencyOpsClient({
               {controlItems.map((item) => (
                 <label
                   key={item.key}
-                  className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer"
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border p-3"
                 >
                   <input
                     type="checkbox"
@@ -156,7 +186,7 @@ export function EmergencyOpsClient({
                       <span className="text-sm font-medium">{item.label}</span>
                       {flags[item.key] && <Badge variant="danger">ACTIVE</Badge>}
                     </div>
-                    <p className="text-xs text-muted-foreground">{item.desc}</p>
+                    <p className="text-muted-foreground text-xs">{item.desc}</p>
                   </div>
                 </label>
               ))}
@@ -164,7 +194,7 @@ export function EmergencyOpsClient({
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="md:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <label className="text-muted-foreground mb-1 block text-xs font-medium">
                   Mandatory Operational Reason
                 </label>
                 <Input
@@ -175,7 +205,7 @@ export function EmergencyOpsClient({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <label className="text-muted-foreground mb-1 block text-xs font-medium">
                   Auto-Expire After (Minutes, 0 = manual)
                 </label>
                 <Input
@@ -188,7 +218,7 @@ export function EmergencyOpsClient({
               </div>
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-destructive text-sm">{error}</p>}
             {notice && <p className="text-sm text-emerald-600">{notice}</p>}
 
             <Button type="submit" variant="destructive" disabled={submitting}>
@@ -205,7 +235,9 @@ export function EmergencyOpsClient({
         </CardHeader>
         <CardContent className="space-y-3">
           {initialActions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No emergency actions recorded.</p>
+            <p className="text-muted-foreground text-sm">
+              No emergency actions recorded.
+            </p>
           ) : (
             initialActions.map((act) => (
               <div
@@ -216,7 +248,7 @@ export function EmergencyOpsClient({
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs font-semibold">{act.id}</span>
                     <Badge variant="outline">{act.actionType}</Badge>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-muted-foreground text-xs">
                       {new Date(act.createdAt).toLocaleString()}
                     </span>
                   </div>

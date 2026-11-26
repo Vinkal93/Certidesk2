@@ -18,9 +18,12 @@ export default async function SuFeatureFlagsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Feature Flags & Kill Switches</h1>
-        <p className="text-sm text-muted-foreground">
-          Global, plan-based, and per-institute feature toggles with version history & rollback.
+        <h1 className="text-2xl font-bold tracking-tight">
+          Feature Flags & Kill Switches
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          Global, plan-based, and per-institute feature toggles with version history &
+          rollback.
         </p>
       </div>
       <FeatureFlagsClient initialFlags={flags} />

@@ -95,9 +95,7 @@ export async function getInstituteTransactions(
 
 export async function listAuditLogs(actionFilter?: string): Promise<AuditLogRecord[]> {
   if (actionFilter) {
-    const snap = await auditLogsCollection()
-      .where("action", "==", actionFilter)
-      .get();
+    const snap = await auditLogsCollection().where("action", "==", actionFilter).get();
     return snap.docs
       .map((d) => d.data())
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))

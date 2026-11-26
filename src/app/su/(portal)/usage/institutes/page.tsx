@@ -20,7 +20,7 @@ export default async function SuUsageInstitutesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Usage by Institute</h1>
-        <p className="text-sm text-muted-foreground">Period: {data.billingPeriod}</p>
+        <p className="text-muted-foreground text-sm">Period: {data.billingPeriod}</p>
       </div>
       <Card>
         <CardHeader>
@@ -28,14 +28,21 @@ export default async function SuUsageInstitutesPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           {data.aggregates.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tenant usage aggregates for this period.</p>
+            <p className="text-muted-foreground text-sm">
+              No tenant usage aggregates for this period.
+            </p>
           ) : (
             data.aggregates.map((agg) => (
-              <div key={agg.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm">
+              <div
+                key={agg.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm"
+              >
                 <span className="font-medium">{agg.instituteName}</span>
                 <div className="flex flex-wrap gap-1.5">
                   {Object.entries(agg.counters).map(([k, v]) => (
-                    <Badge key={k} variant="outline">{k}: {v}</Badge>
+                    <Badge key={k} variant="outline">
+                      {k}: {v}
+                    </Badge>
                   ))}
                 </div>
               </div>

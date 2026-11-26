@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Awards } from "@/components/ui/award";
+import { useActionFeedback } from "@/components/ui/action-feedback-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CertificateRecord } from "@/types/academic";
 import type { StudentRecord } from "@/types/domain";
@@ -22,6 +24,7 @@ export function CertificatesClient({
   certificateFeePaise: number;
   canIssue: boolean;
 }) {
+  const { confirm, runWithBanner } = useActionFeedback();
   const [certificates, setCertificates] = React.useState(initialCertificates);
   const [studentId, setStudentId] = React.useState(students[0]?.id ?? "");
   const [templateId, setTemplateId] = React.useState<"classic" | "modern" | "merit">(
@@ -67,27 +70,50 @@ export function CertificatesClient({
   };
 
   const handleRevoke = async (certificateId: string) => {
+    const resConfirm = await confirm({
+      title: "Revoke Certificate?",
+      description:
+        "This certificate will be marked revoked on the public verification portal.",
+      confirmLabel: "Revoke Certificate",
+      tone: "destructive",
+      requireReason: true,
+      reasonLabel: "Revocation Reason",
+      reasonPlaceholder: "Revoked by institute administrator",
+    });
+    if (!resConfirm.confirmed) return;
+
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/institute/certificates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "revoke",
-          certificateId,
-          reason: "Revoked by institute administrator",
-        }),
+      await runWithBanner({
+        title: "Revoking certificate",
+        successTitle: "Certificate revoked",
+        tone: "warning",
+        task: async () => {
+          const res = await fetch("/api/institute/certificates", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "revoke",
+              certificateId,
+              reason: resConfirm.reason,
+            }),
+          });
+          const json = (await res.json()) as {
+            ok: boolean;
+            data?: { certificate: CertificateRecord };
+            error?: { message?: string };
+          };
+          if (!res.ok || !json.ok || !json.data) {
+            throw new Error(json.error?.message ?? "Failed to revoke certificate.");
+          }
+          setCertificates((prev) =>
+            prev.map((c) => (c.id === certificateId ? json.data!.certificate : c))
+          );
+        },
       });
-      const json = (await res.json()) as {
-        ok: boolean;
-        data?: { certificate: CertificateRecord };
-      };
-      if (res.ok && json.ok && json.data) {
-        setCertificates((prev) =>
-          prev.map((c) => (c.id === certificateId ? json.data!.certificate : c))
-        );
-      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to revoke certificate.");
     } finally {
       setLoading(false);
     }
@@ -210,7 +236,20 @@ export function CertificatesClient({
                         {cert.templateId}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {cert.status === "issued" && (
+                        <div className="hidden sm:block">
+                          <Awards
+                            variant="stamp"
+                            title="CERTIDESK VERIFIED"
+                            subtitle={cert.instituteName}
+                            recipient={cert.studentName}
+                            date={cert.issuedAt.slice(0, 10)}
+                            className="h-20 w-20 scale-90"
+                            showIcon={false}
+                          />
+                        </div>
+                      )}
                       <Link
                         href={`/verify/${cert.verificationId}`}
                         target="_blank"
