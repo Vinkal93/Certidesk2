@@ -2,6 +2,7 @@ import { siteConfig } from "@/config/site";
 import { moduleSpotlights } from "@/config/landing";
 import { PageContainer } from "@/components/layout";
 import { HeroSection } from "@/components/marketing/hero-section";
+import { ShowcaseCardsSection } from "@/components/marketing/showcase-cards-section";
 import { CredibilitySection } from "@/components/marketing/credibility-section";
 import { CoreFeaturesSection } from "@/components/marketing/core-features-section";
 import { WorkflowSection } from "@/components/marketing/workflow-section";
@@ -51,6 +52,9 @@ export default function HomePage() {
 
       {/* 2. Hero */}
       <HeroSection />
+
+      {/* 2.5 Showcase Cards */}
+      <ShowcaseCardsSection />
 
       {/* 3. Product credibility & key benefits */}
       <CredibilitySection />

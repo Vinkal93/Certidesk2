@@ -8,18 +8,24 @@
     "start": "next start",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
+    "test": "vitest run",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@google-cloud/secret-manager": "^8.0.0",
     "@hookform/resolvers": "^5.0.1",
     "clsx": "^2.1.1",
+    "firebase": "^13.4.0",
+    "firebase-admin": "^14.5.1",
     "framer-motion": "^12.4.7",
     "lucide-react": "^0.475.0",
     "next": "^16.0.0",
+    "razorpay": "^2.9.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^3.0.2",
     "zod": "^3.24.2"
   },
@@ -33,6 +39,8 @@
     "prettier": "^3.5.2",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^4.0.9",
-    "typescript": "^5.7.3"
+    "tsx": "^4.23.15",
+    "typescript": "^5.7.3",
+    "vitest": "^5.1.2"
   }
 }
