@@ -83,15 +83,15 @@ export function isAllowlistedSuperAdminEmail(email: string | null | undefined): 
  * and validates that the account & parent institute remain active.
  */
 export async function getSessionUser(): Promise<SessionUser | null> {
-  const config = getSessionCookieConfig();
-  const cookieStore = await cookies();
-  const rawCookie = cookieStore.get(config.name)?.value;
-
-  if (!rawCookie) {
-    return null;
-  }
-
   try {
+    const config = getSessionCookieConfig();
+    const cookieStore = await cookies();
+    const rawCookie = cookieStore.get(config.name)?.value;
+
+    if (!rawCookie) {
+      return null;
+    }
+
     const decoded = await verifyFirebaseSessionCookie(rawCookie, true);
     let sessionUser = extractSessionUserFromClaims({
       uid: decoded.uid,
