@@ -8,6 +8,7 @@ import { PageContainer } from "@/components/layout";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { InstituteDetailClient } from "@/features/super-admin/components/institute-detail-client";
+import { EnterLivePortalButton } from "@/features/super-admin/components/enter-live-portal-button";
 
 export const metadata: Metadata = {
   title: "Institute Profile",
@@ -59,11 +60,12 @@ export default async function SuperAdminInstituteDetailPage({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <EnterLivePortalButton instituteId={institute.id} />
               <Link
                 href={`/su/institutes/${institute.id}/impression`}
-                className="bg-primary hover:bg-primary/90 inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-colors"
+                className="border-border bg-background text-foreground hover:bg-surface inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold shadow-xs transition-colors"
               >
-                Live Impression
+                Impression Summary
               </Link>
               <Link
                 href={`/su/institutes/${institute.id}/wallet`}

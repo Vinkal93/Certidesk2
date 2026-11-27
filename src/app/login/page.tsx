@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Building2, GraduationCap, ShieldCheck } from "lucide-react";
+import { ArrowRight, Building2, GraduationCap, QrCode, ShieldCheck } from "lucide-react";
 import { buildPrivateNoIndexMetadata } from "@/lib/seo/metadata";
 import { SplitAuthLayout } from "@/features/auth/components/split-auth-layout";
 
@@ -70,6 +70,30 @@ export default function LoginPage() {
               <p className="text-muted mt-1 text-xs leading-relaxed">
                 Sign in with your assigned Student ID and password to view receipts,
                 online exams, marksheets, and certificates.
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/login/qr"
+            className="border-border bg-background hover:border-primary/50 hover:bg-surface group flex items-start gap-4 rounded-2xl border p-4 shadow-xs transition"
+          >
+            <span className="bg-primary-soft text-primary flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
+              <QrCode className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-foreground text-base font-semibold">
+                  QR Code Sign In (Phone &rarr; PC)
+                </h2>
+                <ArrowRight
+                  className="text-muted group-hover:text-primary h-4 w-4 transition group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </div>
+              <p className="text-muted mt-1 text-xs leading-relaxed">
+                Already signed in on your phone? Scan the desktop QR code from your
+                profile menu to log in here instantly.
               </p>
             </div>
           </Link>

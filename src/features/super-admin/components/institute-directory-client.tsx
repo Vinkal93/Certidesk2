@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { EnterLivePortalButton } from "./enter-live-portal-button";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -148,11 +149,16 @@ export function InstituteDirectoryClient({
                   </td>
                   <td className="px-4 py-3.5 text-right">
                     <div className="flex justify-end gap-1.5">
+                      <EnterLivePortalButton
+                        instituteId={inst.id}
+                        label="Live Portal"
+                        size="sm"
+                      />
                       <Link
                         href={`/su/institutes/${inst.id}/impression`}
-                        className={buttonVariants({ variant: "primary", size: "sm" })}
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
                       >
-                        Live View
+                        Snapshot
                       </Link>
                       <Link
                         href={`/su/institutes/${inst.id}`}

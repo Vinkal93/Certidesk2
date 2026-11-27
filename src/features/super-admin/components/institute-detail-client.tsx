@@ -36,6 +36,7 @@ export function InstituteDetailClient({
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [resetPassword, setResetPassword] = React.useState<string | null>(null);
+  const [customPasswordInput, setCustomPasswordInput] = React.useState("");
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -73,7 +74,10 @@ export function InstituteDetailClient({
     }
   };
 
-  const runAction = async (action: "activate" | "suspend" | "reset_access") => {
+  const runAction = async (
+    action: "activate" | "suspend" | "reset_access",
+    customPassword?: string
+  ) => {
     setLoading(true);
     setError(null);
     setMessage(null);
@@ -82,7 +86,10 @@ export function InstituteDetailClient({
       const res = await fetch(`/api/su/institutes/${institute.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({
+          action,
+          ...(customPassword ? { customPassword } : {}),
+        }),
       });
       const json = (await res.json()) as {
         ok: boolean;
@@ -218,6 +225,60 @@ export function InstituteDetailClient({
                 ₹{(institute.walletBalancePaise / 100).toFixed(2)}
               </p>
             </div>
+
+            <div className="border-border bg-surface space-y-1.5 rounded-xl border p-3.5 text-xs">
+              <p className="text-foreground font-semibold">Institute Login Identifiers</p>
+              <div className="text-muted flex justify-between gap-2">
+                <span>Institute ID:</span>
+                <span className="text-foreground font-semibold">{institute.code}</span>
+              </div>
+              <div className="text-muted flex justify-between gap-2">
+                <span>Login Email:</span>
+                <span className="text-foreground font-semibold">{institute.email}</span>
+              </div>
+              <div className="text-muted flex justify-between gap-2">
+                <span>Login Mobile:</span>
+                <span className="text-foreground font-semibold">{institute.phone}</span>
+              </div>
+            </div>
+
+            <div className="border-border space-y-2 rounded-xl border p-3.5">
+              <p className="text-foreground text-xs font-semibold">
+                Set / Reset Institute Admin Password
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter new password (min 6 chars)"
+                  value={customPasswordInput}
+                  onChange={(e) => setCustomPasswordInput(e.target.value)}
+                  minLength={6}
+                />
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  disabled={loading || customPasswordInput.trim().length < 6}
+                  onClick={async () => {
+                    await runAction("reset_access", customPasswordInput.trim());
+                    setCustomPasswordInput("");
+                  }}
+                >
+                  Set Password
+                </Button>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                fullWidth
+                loading={loading}
+                leftIcon={<KeyRound className="h-4 w-4" aria-hidden="true" />}
+                onClick={() => runAction("reset_access")}
+              >
+                Or Generate Random Temp Password
+              </Button>
+            </div>
+
             <div className="flex flex-col gap-2.5">
               {institute.status === "active" ? (
                 <Button
@@ -237,14 +298,6 @@ export function InstituteDetailClient({
                   Activate Institute
                 </Button>
               )}
-              <Button
-                variant="outline"
-                loading={loading}
-                leftIcon={<KeyRound className="h-4 w-4" aria-hidden="true" />}
-                onClick={() => runAction("reset_access")}
-              >
-                Reset Admin Password
-              </Button>
             </div>
           </CardContent>
         </Card>

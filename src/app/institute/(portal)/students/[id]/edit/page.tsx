@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getSessionUser } from "@/lib/security/session";
+import { getInstitutePortalSessionUser } from "@/lib/security/session";
 import { resolveAuthorizedInstitute } from "@/lib/security/tenant";
 import { getInstituteStudentById } from "@/services/student.service";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +18,8 @@ export default async function EditInstituteStudentPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await getSessionUser();
-  if (!user || (user.role !== "institute_admin" && user.role !== "staff")) {
+  const user = await getInstitutePortalSessionUser();
+  if (!user) {
     redirect("/institute/login");
   }
 

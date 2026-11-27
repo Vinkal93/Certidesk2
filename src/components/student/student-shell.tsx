@@ -284,6 +284,13 @@ export function StudentShell({
                     >
                       Password &amp; Security
                     </Link>
+                    <Link
+                      href="/scan-login"
+                      onClick={() => setProfileOpen(false)}
+                      className="text-primary hover:bg-surface block rounded-lg px-2.5 py-2 font-semibold"
+                    >
+                      Scan &amp; Login on PC
+                    </Link>
                     <button
                       type="button"
                       disabled={loggingOut}

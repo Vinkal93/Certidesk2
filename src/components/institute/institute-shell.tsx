@@ -248,6 +248,30 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
 
       {/* Main Content Column */}
       <div className="flex min-w-0 flex-1 flex-col">
+        {user.role === "super_admin" && (
+          <div className="bg-navy flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs text-white sm:px-6">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="font-semibold">Super Admin Live Portal Impression:</span>
+              <span className="text-slate-200">
+                {institute.name} ({institute.code})
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                const res = await fetch("/api/su/impression", { method: "DELETE" });
+                const json = (await res.json()) as { data?: { redirectUrl?: string } };
+                window.location.assign(
+                  json.data?.redirectUrl ?? `/su/institutes/${institute.id}`
+                );
+              }}
+              className="cursor-pointer rounded-md bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-white/25"
+            >
+              Exit Live Impression &rarr;
+            </button>
+          </div>
+        )}
         {/* Topbar */}
         <header className="border-border bg-background/95 sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b px-4 backdrop-blur-md sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
@@ -357,6 +381,13 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
                       className="text-foreground hover:bg-surface block rounded-lg px-2.5 py-2"
                     >
                       Account &amp; Institute Settings
+                    </Link>
+                    <Link
+                      href="/scan-login"
+                      onClick={() => setProfileOpen(false)}
+                      className="text-primary hover:bg-surface block rounded-lg px-2.5 py-2 font-semibold"
+                    >
+                      Scan &amp; Login on PC
                     </Link>
                     <button
                       type="button"

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getSessionUser } from "@/lib/security/session";
+import { getInstitutePortalSessionUser } from "@/lib/security/session";
 import { resolveAuthorizedInstitute } from "@/lib/security/tenant";
 import { listBatches, listCourses } from "@/services/academic.service";
 import { resolveWalletBuckets } from "@/services/wallet.service";
@@ -17,8 +17,8 @@ export const metadata: Metadata = {
 };
 
 export default async function AdmitStudentPage() {
-  const user = await getSessionUser();
-  if (!user || (user.role !== "institute_admin" && user.role !== "staff")) {
+  const user = await getInstitutePortalSessionUser();
+  if (!user) {
     redirect("/institute/login");
   }
 

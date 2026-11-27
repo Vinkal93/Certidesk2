@@ -644,6 +644,13 @@ export function SuShell({
                       <span>Platform Settings</span>
                     </Link>
                     <Link
+                      href="/scan-login"
+                      onClick={() => setProfileOpen(false)}
+                      className="text-primary hover:bg-surface flex items-center justify-between rounded-lg px-2.5 py-2 font-semibold transition"
+                    >
+                      <span>Scan &amp; Login on PC</span>
+                    </Link>
+                    <Link
                       href="/su/settings/security"
                       onClick={() => setProfileOpen(false)}
                       className="text-foreground hover:bg-surface flex items-center justify-between rounded-lg px-2.5 py-2 transition"

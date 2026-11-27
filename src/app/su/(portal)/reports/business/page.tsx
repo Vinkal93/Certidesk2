@@ -33,6 +33,7 @@ export default async function SuReportsBusinessPage() {
         </div>
         <a
           href="/api/su/reports/export?dataset=institutes&range=30d&format=csv"
+          download
           className="border-border bg-background hover:bg-surface inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium"
         >
           <Download className="h-3.5 w-3.5" aria-hidden="true" />
