@@ -376,7 +376,7 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
 
         <main
           id="main-content"
-          className="min-w-0 flex-1 overflow-x-hidden p-3 sm:p-5 lg:p-6"
+          className="portal-main min-w-0 flex-1 overflow-x-hidden p-3 sm:p-5 lg:p-6"
         >
           {children}
         </main>
