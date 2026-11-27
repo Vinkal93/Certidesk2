@@ -242,17 +242,17 @@
   background-color: rgba(148, 163, 184, 0.45);
 }
 
-/* Prevent double container/section padding inside portal <main> across all viewports & zoom levels */
-#main-content main {
+/* Prevent double container/section padding inside portal <main> without affecting public landing/marketing pages */
+.portal-main main {
   min-height: auto !important;
 }
 
-#main-content section {
+.portal-main section {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
 }
 
-#main-content section > div {
+.portal-main section > div {
   max-width: 100% !important;
   padding-left: 0 !important;
   padding-right: 0 !important;
