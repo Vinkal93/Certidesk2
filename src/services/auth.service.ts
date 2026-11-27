@@ -25,16 +25,108 @@ import { recordAuditLog } from "./audit.service";
 import { recordLoginEvent } from "./security-events.service";
 import type { PortalType, SessionUser } from "@/types/auth";
 
+export function normalizePhoneE164(raw: string): string | null {
+  const cleaned = raw.replace(/[\s\-()]/g, "").trim();
+  if (!cleaned) return null;
+  if (cleaned.startsWith("+") && /^\+[1-9]\d{9,14}$/.test(cleaned)) {
+    return cleaned;
+  }
+  const digits = cleaned.replace(/\D/g, "");
+  if (digits.length === 10 && /^[6-9]\d{9}$/.test(digits)) {
+    return `+91${digits}`;
+  }
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return `+${digits}`;
+  }
+  return null;
+}
+
 export async function resolvePortalLoginIdentifier(
   portal: "institute" | "student",
   identifier: string
 ): Promise<{ authEmail: string }> {
-  const normalized = identifier.trim().toUpperCase();
-  const mappingId = `${portal}_${normalized}`;
+  const trimmed = identifier.trim();
+  const normalizedUpper = trimmed.toUpperCase();
+  const mappingId = `${portal}_${normalizedUpper}`;
   const mappingSnap = await loginMappingsCollection().doc(mappingId).get();
-  const mapping = mappingSnap.data();
+  let mapping = mappingSnap.data();
 
-  if (!mappingSnap.exists || !mapping) {
+  // Multi-identifier resolution for Institute Admin (Institute ID / Code, Email, or Mobile E.164)
+  if ((!mappingSnap.exists || !mapping) && portal === "institute") {
+    let resolvedUser:
+      | {
+          uid: string;
+          email: string;
+          role: string;
+          instituteId: string | null;
+          disabled?: boolean;
+        }
+      | undefined;
+
+    if (trimmed.includes("@")) {
+      const emailLower = trimmed.toLowerCase();
+      const userSnap = await usersCollection()
+        .where("email", "==", emailLower)
+        .limit(2)
+        .get();
+      if (userSnap.size === 1) {
+        const u = userSnap.docs[0]?.data();
+        if (u && (u.role === "institute_admin" || u.role === "staff")) {
+          resolvedUser = u;
+        }
+      }
+    } else if (/^INST_[A-Z0-9_-]+$/.test(normalizedUpper)) {
+      const instDoc = await institutesCollection().doc(normalizedUpper).get();
+      const inst = instDoc.data();
+      if (inst?.adminUid) {
+        const ownerSnap = await usersCollection().doc(inst.adminUid).get();
+        const u = ownerSnap.data();
+        if (u && (u.role === "institute_admin" || u.role === "staff")) {
+          resolvedUser = u;
+        }
+      }
+    } else {
+      const e164 = normalizePhoneE164(trimmed);
+      if (e164) {
+        const instSnap = await institutesCollection()
+          .where("phone", "==", e164)
+          .limit(2)
+          .get();
+        if (instSnap.size === 1) {
+          const inst = instSnap.docs[0]?.data();
+          if (inst?.adminUid) {
+            const ownerSnap = await usersCollection().doc(inst.adminUid).get();
+            const u = ownerSnap.data();
+            if (u && (u.role === "institute_admin" || u.role === "staff")) {
+              resolvedUser = u;
+            }
+          }
+        }
+      }
+    }
+
+    if (resolvedUser && resolvedUser.instituteId) {
+      if (resolvedUser.disabled) {
+        throw new AuthError(
+          403,
+          "ACCOUNT_DISABLED",
+          "This account is currently disabled."
+        );
+      }
+      mapping = {
+        portal: "institute",
+        identifier: normalizedUpper,
+        uid: resolvedUser.uid,
+        authEmail: resolvedUser.email,
+        instituteId: resolvedUser.instituteId,
+        active: !resolvedUser.disabled,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+  }
+
+  if (!mapping) {
     throw new AuthError(401, "INVALID_CREDENTIALS", "Invalid credentials.");
   }
 

@@ -42,6 +42,7 @@ import { Logo } from "@/components/layout/logo";
 import { SidebarMenu, type SidebarMenuGroup } from "@/components/portal/sidebar-menu";
 import { Badge } from "@/components/ui/badge";
 import { IconButton } from "@/components/ui/icon-button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import type { SessionUser } from "@/types/auth";
 
 const iconComponents: Record<InstituteNavIcon, LucideIcon> = {
@@ -299,6 +300,8 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
                 />
               </div>
             </form>
+
+            <ThemeToggle />
 
             {/* Notifications */}
             <div className="relative">

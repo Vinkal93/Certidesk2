@@ -1,6 +1,10 @@
 import "server-only";
 import { getAdminFirestore } from "@/lib/firebase/admin";
-import { institutesCollection, studentsCollection } from "@/lib/firebase/firestore";
+import {
+  feeReceiptsCollection,
+  institutesCollection,
+  studentsCollection,
+} from "@/lib/firebase/firestore";
 import { AuthError } from "@/lib/security/session";
 import { listStudentOwnCertificates } from "./certificate.service";
 import type { SessionUser } from "@/types/auth";
@@ -48,12 +52,13 @@ export async function getStudentPortalContext(actor: SessionUser) {
   const { student, institute } = await resolveVerifiedStudentContext(actor);
   const db = getAdminFirestore();
 
-  const [commSnap, readsSnap] = await Promise.all([
+  const [commSnap, studentNotifsSnap, readsSnap] = await Promise.all([
     db
       .collection("communication_logs")
       .where("instituteId", "==", institute.id)
       .where("channel", "==", "in_app")
       .get(),
+    db.collection("notifications").where("studentId", "==", student.id).get(),
     db
       .collection("student_notification_reads")
       .where("studentId", "==", student.id)
@@ -61,7 +66,9 @@ export async function getStudentPortalContext(actor: SessionUser) {
   ]);
 
   const readIds = new Set(readsSnap.docs.map((d) => String(d.data().notificationId)));
-  const unreadNotificationsCount = commSnap.docs.filter((d) => !readIds.has(d.id)).length;
+  const unreadComm = commSnap.docs.filter((d) => !readIds.has(d.id)).length;
+  const unreadDirect = studentNotifsSnap.docs.filter((d) => !readIds.has(d.id)).length;
+  const unreadNotificationsCount = unreadComm + unreadDirect;
 
   return { student, institute, unreadNotificationsCount };
 }
@@ -218,12 +225,27 @@ export async function getStudentFeesAndPayments(actor: SessionUser) {
   return { plans, payments };
 }
 
+export async function getStudentReceipts(actor: SessionUser) {
+  const { student, institute } = await resolveVerifiedStudentContext(actor);
+  const receiptsSnap = await feeReceiptsCollection()
+    .where("studentId", "==", student.id)
+    .get();
+
+  const receipts = receiptsSnap.docs
+    .map((d) => d.data())
+    .filter((r) => r.instituteId === institute.id && r.studentId === student.id)
+    .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+
+  return { student, institute, receipts };
+}
+
 export async function getStudentNotifications(actor: SessionUser) {
   const { student, institute } = await resolveVerifiedStudentContext(actor);
   const db = getAdminFirestore();
 
-  const [commSnap, readsSnap] = await Promise.all([
+  const [commSnap, directSnap, readsSnap] = await Promise.all([
     db.collection("communication_logs").where("instituteId", "==", institute.id).get(),
+    db.collection("notifications").where("studentId", "==", student.id).get(),
     db
       .collection("student_notification_reads")
       .where("studentId", "==", student.id)
@@ -232,15 +254,41 @@ export async function getStudentNotifications(actor: SessionUser) {
 
   const readIds = new Set(readsSnap.docs.map((d) => String(d.data().notificationId)));
 
-  return commSnap.docs
+  const commNotifs = commSnap.docs
     .map((d) => d.data() as CommunicationLogRecord)
     .filter((data) => data.channel === "in_app")
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 50)
     .map((data) => ({
       ...data,
       read: readIds.has(data.id),
     }));
+
+  const directNotifs = directSnap.docs
+    .map((d) => {
+      const data = d.data() as {
+        id: string;
+        instituteId: string;
+        title: string;
+        message: string;
+        createdAt: string;
+      };
+      return {
+        id: data.id,
+        instituteId: data.instituteId,
+        channel: "in_app" as const,
+        audience: "student" as const,
+        category: "announcement" as const,
+        title: data.title,
+        message: data.message,
+        sentByUid: "system",
+        createdAt: data.createdAt,
+        read: readIds.has(data.id),
+      };
+    })
+    .filter((n) => n.instituteId === institute.id);
+
+  return [...directNotifs, ...commNotifs]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 50);
 }
 
 export async function markStudentNotificationRead(

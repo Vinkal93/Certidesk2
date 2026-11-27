@@ -1,22 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  /* Brand & Semantic Colors */
-  --color-primary: #2563eb;
-  --color-primary-dark: #1d4ed8;
-  --color-navy: #172554;
+  /* Brand & Semantic Colors — Modern Fintech / Enterprise SaaS Palette */
+  --color-primary: #0052ff;
+  --color-primary-dark: #0040cc;
+  --color-navy: #0f172a;
   --color-background: #ffffff;
-  --color-surface: #f8fafc;
-  --color-foreground: #0f172a;
-  --color-muted: #64748b;
-  --color-border: #e2e8f0;
-  --color-success: #16a34a;
+  --color-surface: #f5f6f8;
+  --color-foreground: #111827;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-success: #059669;
   --color-warning: #d97706;
   --color-danger: #dc2626;
 
   /* Extended Surface & Tint Tokens */
-  --color-primary-soft: #eff6ff;
-  --color-success-soft: #f0fdf4;
+  --color-primary-soft: #eef4ff;
+  --color-success-soft: #ecfdf5;
   --color-warning-soft: #fffbeb;
   --color-danger-soft: #fef2f2;
   --color-surface-elevated: #ffffff;
@@ -73,16 +73,16 @@
   --radius-2xl: 1.25rem;
   --radius-full: 9999px;
 
-  /* Shadows */
-  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
-  --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.06);
-  --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.06);
-  --shadow-lg: 0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.04);
+  /* Crisp Enterprise Shadows */
+  --shadow-xs: 0 1px 2px 0 rgb(16 24 40 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(16 24 40 / 0.06), 0 1px 2px -1px rgb(16 24 40 / 0.04);
+  --shadow-md: 0 4px 12px -2px rgb(16 24 40 / 0.06), 0 2px 4px -2px rgb(16 24 40 / 0.04);
+  --shadow-lg: 0 12px 24px -4px rgb(16 24 40 / 0.08), 0 4px 8px -4px rgb(16 24 40 / 0.04);
   --shadow-xl:
-    0 20px 25px -5px rgb(15 23 42 / 0.08), 0 8px 10px -6px rgb(15 23 42 / 0.04);
+    0 20px 25px -5px rgb(16 24 40 / 0.08), 0 8px 10px -6px rgb(16 24 40 / 0.04);
 
   /* Focus Ring */
-  --ring-color: rgba(37, 99, 235, 0.35);
+  --ring-color: rgba(0, 82, 255, 0.2);
   --ring-offset: 2px;
 
   /* Transitions */
@@ -117,16 +117,16 @@
 
   /* shadcn/ui semantic tokens */
   --color-card: #ffffff;
-  --color-card-foreground: #0f172a;
-  --color-muted-foreground: #64748b;
+  --color-card-foreground: #111827;
+  --color-muted-foreground: #6b7280;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #f1f5f9;
-  --color-secondary-foreground: #0f172a;
+  --color-secondary: #f3f4f6;
+  --color-secondary-foreground: #111827;
   --color-destructive: #dc2626;
-  --color-ring: #2563eb;
-  --color-input: #e2e8f0;
-  --color-chart-1: #2563eb;
-  --color-chart-2: #16a34a;
+  --color-ring: #0052ff;
+  --color-input: #e5e7eb;
+  --color-chart-1: #0052ff;
+  --color-chart-2: #059669;
   --color-chart-3: #0284c7;
   --color-chart-5: #d97706;
 
@@ -138,6 +138,34 @@
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
   --radius-2xl: var(--radius-2xl);
+}
+
+.dark {
+  --color-primary: #3b82f6;
+  --color-primary-dark: #2563eb;
+  --color-navy: #1e293b;
+  --color-background: #111827;
+  --color-surface: #0b0f19;
+  --color-foreground: #f9fafb;
+  --color-muted: #9ca3af;
+  --color-border: #1f2937;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+
+  --color-primary-soft: rgba(59, 130, 246, 0.16);
+  --color-success-soft: rgba(52, 211, 153, 0.14);
+  --color-warning-soft: rgba(251, 191, 36, 0.14);
+  --color-danger-soft: rgba(248, 113, 113, 0.14);
+  --color-surface-elevated: #161f30;
+
+  --color-card: #111827;
+  --color-card-foreground: #f9fafb;
+  --color-muted-foreground: #9ca3af;
+  --color-secondary: #1f2937;
+  --color-secondary-foreground: #f9fafb;
+  --color-input: #1f2937;
+  --ring-color: rgba(59, 130, 246, 0.35);
 }
 
 @layer base {
@@ -157,5 +185,19 @@
   :focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: var(--ring-offset);
+  }
+
+  select {
+    background-color: var(--color-background);
+    border-color: var(--color-border);
+    transition:
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast);
+  }
+
+  select:focus-visible {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--ring-color);
   }
 }

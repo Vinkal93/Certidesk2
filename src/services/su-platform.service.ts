@@ -12,9 +12,7 @@ import { AuthError } from "@/lib/security/session";
 import { generateId } from "@/lib/utils/ids";
 import { recordAuditLog } from "./audit.service";
 import { getRazorpayGatewayConfig } from "./gateway.service";
-import { computeWalletDebit } from "./wallet.service";
 import type { SessionUser } from "@/types/auth";
-import type { WalletTransactionRecord } from "@/types/domain";
 
 export interface PlatformPricingConfig {
   id: "pricing";
@@ -277,85 +275,24 @@ export async function adjustInstituteWalletAtomic(
     type: "credit" | "debit";
     amountRupees: number;
     reason: string;
+    reference?: string | undefined;
+    internalNote?: string | undefined;
     idempotencyKey: string;
   }
-): Promise<{ alreadyProcessed: boolean; transaction: WalletTransactionRecord }> {
+) {
   assertSuperAdmin(actor);
   const amountPaise = Math.round(input.amountRupees * 100);
-  if (!Number.isInteger(amountPaise) || amountPaise <= 0) {
-    throw new AuthError(400, "INVALID_AMOUNT", "Adjustment amount must be positive.");
-  }
-  if (input.reason.trim().length < 5) {
-    throw new AuthError(
-      400,
-      "REASON_REQUIRED",
-      "A clear audit reason (min 5 chars) is required for manual wallet adjustments."
-    );
-  }
-
-  const db = getAdminFirestore();
-  const instRef = institutesCollection().doc(input.instituteId);
-  const txDocId = `ADJ_${input.instituteId}_${input.idempotencyKey.replace(/[^a-zA-Z0-9_-]/g, "")}`;
-  const txRef = walletTransactionsCollection().doc(txDocId);
-
-  const result = await db.runTransaction(async (tx) => {
-    const [instSnap, existingTxSnap] = await Promise.all([
-      tx.get(instRef),
-      tx.get(txRef),
-    ]);
-    const institute = instSnap.data();
-    if (!instSnap.exists || !institute) {
-      throw new AuthError(404, "INSTITUTE_NOT_FOUND", "Institute not found.");
-    }
-
-    if (existingTxSnap.exists && existingTxSnap.data()) {
-      return {
-        alreadyProcessed: true,
-        transaction: existingTxSnap.data()!,
-      };
-    }
-
-    const nextBalance =
-      input.type === "credit"
-        ? institute.walletBalancePaise + amountPaise
-        : computeWalletDebit(institute.walletBalancePaise, amountPaise);
-
-    const now = new Date().toISOString();
-    const record: WalletTransactionRecord = {
-      id: txDocId,
-      instituteId: institute.id,
-      type: input.type,
-      amountPaise,
-      balanceAfterPaise: nextBalance,
-      reason: "manual_adjustment",
-      referenceId: input.idempotencyKey,
-      actorUid: actor.uid,
-      note: input.reason.trim(),
-      createdAt: now,
-    };
-
-    tx.update(instRef, { walletBalancePaise: nextBalance, updatedAt: now });
-    tx.set(txRef, record);
-
-    return { alreadyProcessed: false, transaction: record };
+  const { adjustInstituteWallet } = await import("./wallet-reconciliation.service");
+  return adjustInstituteWallet(actor, {
+    instituteId: input.instituteId,
+    type: input.type,
+    amountPaise,
+    reason: input.reason,
+    reference: input.reference,
+    internalNote: input.internalNote,
+    idempotencyKey: input.idempotencyKey,
+    actorUid: actor.uid,
   });
-
-  if (!result.alreadyProcessed) {
-    await recordAuditLog({
-      action: input.type === "credit" ? "WALLET_CREDITED" : "WALLET_DEBITED",
-      actorUid: actor.uid,
-      actorRole: actor.role,
-      instituteId: input.instituteId,
-      targetId: txDocId,
-      metadata: {
-        amountPaise,
-        balanceAfterPaise: result.transaction.balanceAfterPaise,
-        reason: input.reason.trim(),
-      },
-    });
-  }
-
-  return result;
 }
 
 export async function listSubscriptionPlans(actor: SessionUser) {

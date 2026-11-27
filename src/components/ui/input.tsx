@@ -42,12 +42,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Inp
           aria-invalid={error ? true : undefined}
           aria-describedby={errorId ?? helperId}
           className={cn(
-            "bg-background text-foreground placeholder:text-muted/70 flex h-10 w-full rounded-lg border px-3 py-2 text-sm transition-colors duration-150",
-            "focus-visible:outline-primary focus-visible:outline-2 focus-visible:outline-offset-0",
+            "bg-background text-foreground placeholder:text-muted/70 flex h-10 w-full rounded-lg border px-3 py-2 text-sm shadow-xs transition-all duration-150",
+            "focus-visible:border-primary focus-visible:ring-primary/15 focus-visible:ring-3 focus-visible:outline-none",
             "disabled:bg-surface disabled:cursor-not-allowed disabled:opacity-60",
             error
-              ? "border-danger focus-visible:outline-danger"
-              : "border-border hover:border-slate-300",
+              ? "border-danger focus-visible:border-danger focus-visible:ring-danger/15"
+              : "border-border hover:border-gray-300",
             leftAddon && "pl-9",
             className
           )}

@@ -47,6 +47,8 @@ export const studentNavGroups: StudentNavGroup[] = [
     title: "FINANCE & ALERTS",
     items: [
       { label: "Fee Summary", href: "/student/fees", icon: "indianRupee" },
+      { label: "Fee Transactions", href: "/student/fees/transactions", icon: "receipt" },
+      { label: "Fee Receipts", href: "/student/fees/receipts", icon: "receipt" },
       { label: "Payment Receipts", href: "/student/payments", icon: "receipt" },
       { label: "Notifications", href: "/student/notifications", icon: "bell" },
     ],
@@ -70,6 +72,8 @@ export const studentRouteTitles: Record<string, string> = {
   "/student/marksheets": "Marksheets",
   "/student/certificates": "Certificates",
   "/student/fees": "Fee Summary",
+  "/student/fees/transactions": "Fee Transactions",
+  "/student/fees/receipts": "Fee Receipts",
   "/student/payments": "Payment Receipts",
   "/student/notifications": "Notifications",
   "/student/settings": "Account Settings",

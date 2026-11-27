@@ -15,10 +15,10 @@ export function Card({
   return (
     <div
       className={cn(
-        "border-border bg-background rounded-xl border",
+        "border-border bg-background rounded-2xl border",
         elevated ? "shadow-md" : "shadow-xs",
         interactive &&
-          "transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md",
+          "transition-all duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md",
         className
       )}
       {...props}
@@ -39,7 +39,7 @@ export function CardTitle({
 }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3
-      className={cn("text-foreground text-lg font-semibold tracking-tight", className)}
+      className={cn("text-foreground text-base font-semibold tracking-tight", className)}
       {...props}
     />
   );

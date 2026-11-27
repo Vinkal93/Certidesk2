@@ -118,10 +118,10 @@ export function SidebarMenu({
                         }}
                         title={!showExpanded ? item.label : undefined}
                         className={cn(
-                          "group flex items-center justify-between gap-2.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors",
+                          "group flex items-center justify-between gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
                           isActive
-                            ? "bg-navy text-white shadow-xs"
-                            : "text-muted hover:bg-surface hover:text-foreground",
+                            ? "bg-primary-soft text-primary font-semibold"
+                            : "text-muted hover:bg-surface hover:text-foreground font-medium",
                           !showExpanded && "justify-center px-2 py-2"
                         )}
                       >
@@ -130,7 +130,7 @@ export function SidebarMenu({
                             className={cn(
                               "h-4 w-4 shrink-0",
                               isActive
-                                ? "text-blue-300"
+                                ? "text-primary"
                                 : "text-muted group-hover:text-foreground"
                             )}
                             aria-hidden="true"

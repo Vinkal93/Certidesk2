@@ -374,6 +374,55 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /feeStructures/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /feeReceipts/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId))
+        || (isStudent() && resource.data.studentId == request.auth.token.studentId);
+      allow write: if false;
+    }
+
+    match /feeRefunds/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /instituteCategories/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /instituteAccounts/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /instituteLedgerEntries/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
     // Default deny everything else
     match /{document=**} {
       allow read, write: if false;

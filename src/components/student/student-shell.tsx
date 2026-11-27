@@ -36,6 +36,7 @@ import { getClientAuth, isFirebaseClientConfigured } from "@/lib/firebase/client
 import { Logo } from "@/components/layout/logo";
 import { SidebarMenu, type SidebarMenuGroup } from "@/components/portal/sidebar-menu";
 import { IconButton } from "@/components/ui/icon-button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 const iconMap: Record<StudentNavIcon, LucideIcon> = {
   layoutDashboard: LayoutDashboard,
@@ -235,17 +236,18 @@ export function StudentShell({
           </div>
 
           <div className="flex items-center gap-2.5 sm:gap-3">
+            <ThemeToggle />
+
             <Link
               href="/student/notifications"
               className="border-border bg-background text-foreground hover:bg-surface relative inline-flex h-9 w-9 items-center justify-center rounded-lg border"
-              aria-label="Notifications"
+              aria-label={`Notifications (${unreadNotificationsCount} unread)`}
             >
               <Bell className="h-4 w-4" aria-hidden="true" />
               {unreadNotificationsCount > 0 && (
-                <span
-                  aria-hidden="true"
-                  className="bg-primary ring-background absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2"
-                />
+                <span className="bg-primary ring-background absolute -top-1.5 -right-1.5 inline-flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white ring-2">
+                  {unreadNotificationsCount > 99 ? "99+" : unreadNotificationsCount}
+                </span>
               )}
             </Link>
 
