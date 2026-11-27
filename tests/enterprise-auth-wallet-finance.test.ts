@@ -21,6 +21,7 @@ import {
 } from "@/services/institute-finance.service";
 import { getStudentReceipts } from "@/services/student-portal.service";
 import { decryptSecretPayload, encryptSecretPayload } from "@/lib/gcp/secret-manager";
+import { resolveWalletBuckets } from "@/services/wallet.service";
 import type { SessionUser } from "@/types/auth";
 
 const instituteAdminUser: SessionUser = {
@@ -172,5 +173,17 @@ describe("Auth, Wallet Reconciliation, Finance & Student Portal", () => {
     const encrypted = encryptSecretPayload("rzp_test_secret_12345");
     expect(encrypted.ciphertext).not.toContain("rzp_test_secret_12345");
     expect(decryptSecretPayload(encrypted)).toBe("rzp_test_secret_12345");
+  });
+
+  it("recovers spendable balance when legacy walletBalancePaise is ahead of paidBalancePaise", () => {
+    const summary = resolveWalletBuckets({
+      walletBalancePaise: 120000,
+      paidBalancePaise: 0,
+      bonusBalancePaise: 0,
+      walletVersion: 1,
+      updatedAt: "2026-11-27T00:00:00.000Z",
+    });
+    expect(summary.paidBalancePaise).toBe(120000);
+    expect(summary.totalSpendableBalancePaise).toBe(120000);
   });
 });
