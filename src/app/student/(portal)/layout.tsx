@@ -4,6 +4,8 @@ import { getSessionUser } from "@/lib/security/session";
 import { getStudentPortalContext } from "@/services/student-portal.service";
 import { buildPrivateNoIndexMetadata } from "@/lib/seo/metadata";
 import { StudentShell } from "@/components/student/student-shell";
+import { MaintenanceLockdownScreen } from "@/components/emergency/maintenance-lockdown-screen";
+import { evaluatePlatformPolicy } from "@/services/emergency-policy.service";
 
 export const metadata: Metadata = buildPrivateNoIndexMetadata("Student Portal");
 
@@ -22,6 +24,14 @@ export default async function StudentPortalLayout({
     ctx = await getStudentPortalContext(user);
   } catch {
     redirect("/student/login");
+  }
+
+  const policy = await evaluatePlatformPolicy({
+    instituteId: ctx.institute.id,
+    actorRole: user.role,
+  });
+  if (policy.blocked) {
+    return <MaintenanceLockdownScreen policy={policy} portalLabel="Student Portal" />;
   }
 
   return (

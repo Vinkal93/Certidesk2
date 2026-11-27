@@ -93,6 +93,18 @@ export default function SecurityPage() {
 
           <div className="mt-10 flex flex-wrap gap-4">
             <Link
+              href="/legal"
+              className={buttonVariants({ variant: "outline", size: "md" })}
+            >
+              Legal & Compliance Hub
+            </Link>
+            <Link
+              href="/dpa"
+              className={buttonVariants({ variant: "outline", size: "md" })}
+            >
+              Data Processing Addendum
+            </Link>
+            <Link
               href="/privacy"
               className={buttonVariants({ variant: "outline", size: "md" })}
             >

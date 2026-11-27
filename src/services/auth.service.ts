@@ -151,10 +151,26 @@ export async function resolvePortalLoginIdentifier(
   return { authEmail: mapping.authEmail };
 }
 
+export function verifySuperAdminSecretCode(secretCode?: string): void {
+  const expected = process.env.SUPER_ADMIN_SECRET_CODE?.trim() || "GLTPP2290D";
+  if ((secretCode ?? "").trim() !== expected) {
+    throw new AuthError(
+      403,
+      "INVALID_SECRET_CODE",
+      "Invalid Super Admin Secret Key. Access denied."
+    );
+  }
+}
+
 export async function establishPortalSession(
   idToken: string,
   portal: PortalType,
-  requestMeta?: { ipAddress?: string | null; userAgent?: string | null }
+  requestMeta?: {
+    ipAddress?: string | null;
+    userAgent?: string | null;
+    secretCode?: string | undefined;
+    enforceSuperAdminSecret?: boolean | undefined;
+  }
 ): Promise<SessionUser> {
   const decoded = await verifyFirebaseIdToken(idToken, true).catch(async () => {
     await recordLoginEvent({
@@ -168,6 +184,28 @@ export async function establishPortalSession(
     }).catch(() => undefined);
     throw new AuthError(401, "INVALID_TOKEN", "Invalid or expired authentication token.");
   });
+
+  if (
+    portal === "super_admin" &&
+    requestMeta?.enforceSuperAdminSecret &&
+    !decoded.qrSessionId
+  ) {
+    try {
+      verifySuperAdminSecretCode(requestMeta.secretCode);
+    } catch (err) {
+      await recordLoginEvent({
+        userId: decoded.uid,
+        identifier: decoded.email ?? decoded.uid,
+        role: "super_admin",
+        authMethod: "id_token",
+        result: "failed",
+        failureCategory: "invalid_secret_code",
+        ipAddress: requestMeta?.ipAddress ?? null,
+        userAgent: requestMeta?.userAgent ?? null,
+      }).catch(() => undefined);
+      throw err;
+    }
+  }
 
   let sessionUser = extractSessionUserFromClaims({
     uid: decoded.uid,

@@ -308,6 +308,15 @@ export async function requireSessionUser(
     );
   }
 
+  // Enforce global/institute maintenance & lockdown on non-Super-Admin portals
+  if (requiredPortal !== "super_admin" && user.role !== "super_admin") {
+    const { assertServiceAllowed } = await import("@/services/emergency-policy.service");
+    await assertServiceAllowed({
+      instituteId: user.instituteId,
+      actorRole: user.role,
+    });
+  }
+
   return user;
 }
 

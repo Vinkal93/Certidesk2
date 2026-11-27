@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/security/session";
-import { getEmergencyOverview } from "@/services/emergency.service";
-import { IncidentsClient } from "@/features/super-admin/components/incidents-client";
+import { listEnterpriseIncidents } from "@/services/emergency-ops.service";
+import { IncidentsEnterpriseClient } from "@/features/super-admin/components/emergency/incidents-enterprise-client";
 
 export const metadata: Metadata = {
   title: "Incident Management",
@@ -13,19 +13,14 @@ export default async function SuEmergencyIncidentsPage() {
   const user = await getSessionUser();
   if (!user || user.role !== "super_admin") redirect("/su");
 
-  const overview = await getEmergencyOverview(user);
+  const data = await listEnterpriseIncidents(user);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Platform Incident Management
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Declare, track, and resolve SEV-1 through SEV-4 platform incidents.
-        </p>
-      </div>
-      <IncidentsClient initialIncidents={overview.incidents} />
-    </div>
+    <IncidentsEnterpriseClient
+      initialIncidents={data.incidents}
+      services={data.services}
+      institutes={data.institutes}
+      operators={data.operators}
+    />
   );
 }

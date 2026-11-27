@@ -391,10 +391,6 @@ export async function activateOrDisableRazorpayGateway(
   const status = env === "test" ? existing.testStatus : existing.liveStatus;
   const webhookConfigured =
     env === "test" ? existing.testWebhookConfigured : existing.liveWebhookConfigured;
-  const webhookVerified =
-    env === "test" ? existing.testWebhookVerified : existing.liveWebhookVerified;
-  const flowVerified =
-    env === "test" ? existing.testPaymentFlowVerified : existing.livePaymentFlowVerified;
 
   if (!configured) {
     throw new AuthError(
@@ -410,18 +406,11 @@ export async function activateOrDisableRazorpayGateway(
       `Run and pass the ${env.toUpperCase()} connection test before activation.`
     );
   }
-  if (!webhookConfigured || !webhookVerified) {
+  if (!webhookConfigured) {
     throw new AuthError(
       400,
-      "WEBHOOK_NOT_VERIFIED",
-      `Configure and verify a signed ${env.toUpperCase()} webhook event before activation.`
-    );
-  }
-  if (!flowVerified) {
-    throw new AuthError(
-      400,
-      "PAYMENT_FLOW_NOT_VERIFIED",
-      `Complete ${env.toUpperCase()} payment flow diagnostics before activation.`
+      "WEBHOOK_NOT_CONFIGURED",
+      `Save the ${env.toUpperCase()} Webhook Secret before activation.`
     );
   }
   if (env === "live" && !input.liveMerchantApproved && !existing.liveMerchantApproved) {

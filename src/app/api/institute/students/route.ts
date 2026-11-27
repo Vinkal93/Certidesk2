@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireSessionUser } from "@/lib/security/session";
+import { assertServiceAllowed } from "@/services/emergency-policy.service";
 import { admitStudentSchema } from "@/lib/validation/student";
 import { admitStudent, listInstituteStudentsPaginated } from "@/services/student.service";
 import { handleApiError, jsonError, jsonOk } from "@/lib/utils/api-response";
@@ -29,6 +30,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const actor = await requireSessionUser("institute");
+    await assertServiceAllowed({
+      serviceId: "student_management",
+      instituteId: actor.instituteId,
+      operation: "create",
+      isWrite: true,
+      actorRole: actor.role,
+    });
     const body: unknown = await request.json().catch(() => null);
     const parsed = admitStudentSchema.safeParse(body);
 

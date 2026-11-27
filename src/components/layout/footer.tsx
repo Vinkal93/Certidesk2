@@ -3,12 +3,16 @@ import { siteConfig } from "@/config/site";
 import { Container } from "@/components/ui/container";
 import { Separator } from "@/components/ui/separator";
 import { Logo } from "./logo";
+import { BackToTopButton } from "./back-to-top-button";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-border bg-surface text-foreground border-t">
+    <footer
+      id="site-footer"
+      className="border-border bg-surface text-foreground overflow-hidden border-t"
+    >
       <Container className="py-14 sm:py-16">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
           <div className="lg:col-span-4">
@@ -56,16 +60,39 @@ export function Footer() {
           <p>
             &copy; {currentYear} {siteConfig.name}. All rights reserved.
           </p>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <Link href="/legal" className="hover:text-foreground">
+              Legal Center
+            </Link>
             <Link href="/privacy" className="hover:text-foreground">
               Privacy Policy
             </Link>
             <Link href="/terms" className="hover:text-foreground">
               Terms of Service
             </Link>
+            <Link href="/refund-policy" className="hover:text-foreground">
+              Refund Policy
+            </Link>
+            <Link href="/cookie-policy" className="hover:text-foreground">
+              Cookie Policy
+            </Link>
+            <Link href="/sla" className="hover:text-foreground">
+              SLA
+            </Link>
           </div>
         </div>
+
+        {/* Oversized Subtle Brand Watermark */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none mt-10 flex w-full items-center justify-center overflow-hidden select-none sm:mt-12"
+        >
+          <p className="from-foreground/12 via-primary/20 to-foreground/10 bg-gradient-to-r bg-clip-text text-center text-[clamp(3.25rem,13vw,10.5rem)] leading-[0.88] font-extrabold tracking-tight text-transparent">
+            CertiDesk Pro
+          </p>
+        </div>
       </Container>
+      <BackToTopButton footerId="site-footer" />
     </footer>
   );
 }

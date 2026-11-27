@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { requireSessionUser } from "@/lib/security/session";
+import { assertServiceAllowed } from "@/services/emergency-policy.service";
 import { createWalletRechargeOrder } from "@/services/payment.service";
 import { handleApiError, jsonError, jsonOk } from "@/lib/utils/api-response";
 
@@ -16,6 +17,13 @@ const createOrderSchema = z
 export async function POST(request: NextRequest) {
   try {
     const actor = await requireSessionUser("institute");
+    await assertServiceAllowed({
+      serviceId: "payments_razorpay",
+      instituteId: actor.instituteId,
+      operation: "create_order",
+      isWrite: true,
+      actorRole: actor.role,
+    });
     const body: unknown = await request.json().catch(() => null);
     const parsed = createOrderSchema.safeParse(body);
 

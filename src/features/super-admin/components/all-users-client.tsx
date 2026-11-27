@@ -14,6 +14,13 @@ import {
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Avatar,
+  AvatarBadge,
+  AvatarBadgeStatus,
+  AvatarFallback,
+  type AvatarBadgeStatusVariant,
+} from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,6 +69,27 @@ function formatDateTime(iso: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function getUserAvatarStatus(u: PlatformUserSummary): {
+  variant: AvatarBadgeStatusVariant;
+  label: string;
+} {
+  if (u.disabled) return { variant: "do-not-disturb", label: "Blocked / Suspended" };
+  if (u.lastLoginStatus === "blocked") return { variant: "busy", label: "Blocked login" };
+  if (u.lastLoginStatus === "failed")
+    return { variant: "away", label: "Recent failed login" };
+  if (u.lastLoginAt) return { variant: "online", label: "Active" };
+  return { variant: "offline", label: "Inactive (No login yet)" };
+}
+
+function getInitials(name: string, email: string): string {
+  const source = (name || email || "U").trim();
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]![0]}${parts[1]![0]}`.toUpperCase();
+  }
+  return source.slice(0, 2).toUpperCase();
 }
 
 export function AllUsersClient({
@@ -431,12 +459,30 @@ export function AllUsersClient({
               <tbody className="divide-border divide-y">
                 {filteredUsers.map((u) => {
                   const isSelf = u.uid === currentUid;
+                  const avatarStatus = getUserAvatarStatus(u);
                   return (
                     <tr key={u.uid} className="hover:bg-surface/60 transition">
                       <td className="px-4 py-3">
-                        <p className="text-foreground font-semibold">{u.displayName}</p>
-                        <p className="text-muted text-xs">{u.email}</p>
-                        <p className="text-muted font-mono text-[10px]">{u.uid}</p>
+                        <div className="flex items-center gap-3">
+                          <Avatar size="md">
+                            <AvatarFallback>
+                              {getInitials(u.displayName, u.email)}
+                            </AvatarFallback>
+                            <AvatarBadge>
+                              <AvatarBadgeStatus
+                                variant={avatarStatus.variant}
+                                title={avatarStatus.label}
+                              />
+                            </AvatarBadge>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="text-foreground truncate font-semibold">
+                              {u.displayName}
+                            </p>
+                            <p className="text-muted truncate text-xs">{u.email}</p>
+                            <p className="text-muted truncate text-[10px]">{u.uid}</p>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={ROLE_BADGE_VARIANT[u.role]}>

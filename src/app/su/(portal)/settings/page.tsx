@@ -3,11 +3,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, CreditCard, ShieldCheck } from "lucide-react";
 import { getSessionUser } from "@/lib/security/session";
+import { usersCollection } from "@/lib/firebase/firestore";
 import { PageContainer } from "@/components/layout";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { CreateSuperAdminCard } from "@/features/super-admin/components/create-super-admin-card";
 
 export const metadata: Metadata = {
   title: "Platform Settings",
@@ -19,6 +21,20 @@ export default async function SuperAdminSettingsPage() {
   if (!user || user.role !== "super_admin") {
     redirect("/su");
   }
+
+  const adminsSnap = await usersCollection().where("role", "==", "super_admin").get();
+  const admins = adminsSnap.docs
+    .map((d) => {
+      const u = d.data();
+      return {
+        uid: u.uid,
+        email: u.email,
+        displayName: u.displayName || u.email,
+        disabled: Boolean(u.disabled),
+        createdAt: u.createdAt,
+      };
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   return (
     <PageContainer>
@@ -104,6 +120,8 @@ export default async function SuperAdminSettingsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <CreateSuperAdminCard initialAdmins={admins} />
           </div>
         </Container>
       </Section>

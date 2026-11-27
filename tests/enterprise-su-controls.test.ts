@@ -6,6 +6,7 @@ import { suNavGroups } from "@/config/su-nav";
 import { instituteNavGroups } from "@/config/institute-nav";
 import { validateUserControlTarget } from "@/services/su-users.service";
 import { resolveEntitlementDecision } from "@/services/entitlement.service";
+import { verifySuperAdminSecretCode } from "@/services/auth.service";
 
 describe("Super Admin navigation & unified All Users controls", () => {
   it("replaces separate Students and Staff sidebar items with All Users", () => {
@@ -82,5 +83,15 @@ describe("Super Admin navigation & unified All Users controls", () => {
     const mgmtGroup = instituteNavGroups.find((g) => g.title === "MANAGEMENT");
     expect(mgmtGroup).toBeDefined();
     expect(mgmtGroup!.items.map((i) => i.href)).toContain("/institute/logins");
+  });
+
+  it("enforces Super Admin secret key verification server-side", () => {
+    expect(() => verifySuperAdminSecretCode("GLTPP2290D")).not.toThrow();
+    expect(() => verifySuperAdminSecretCode("wrong-key")).toThrow(
+      /Invalid Super Admin Secret Key/i
+    );
+    expect(() => verifySuperAdminSecretCode("")).toThrow(
+      /Invalid Super Admin Secret Key/i
+    );
   });
 });

@@ -21,8 +21,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/blog", changeFrequency: "weekly", priority: 0.8 },
     { path: "/about", changeFrequency: "monthly", priority: 0.7 },
     { path: "/contact", changeFrequency: "monthly", priority: 0.7 },
-    { path: "/privacy", changeFrequency: "yearly", priority: 0.4 },
-    { path: "/terms", changeFrequency: "yearly", priority: 0.4 },
+    { path: "/legal", changeFrequency: "monthly", priority: 0.6 },
+    { path: "/privacy", changeFrequency: "monthly", priority: 0.5 },
+    { path: "/terms", changeFrequency: "monthly", priority: 0.5 },
+    { path: "/refund-policy", changeFrequency: "monthly", priority: 0.5 },
+    { path: "/cookie-policy", changeFrequency: "yearly", priority: 0.4 },
+    { path: "/acceptable-use", changeFrequency: "yearly", priority: 0.4 },
+    { path: "/dpa", changeFrequency: "monthly", priority: 0.5 },
+    { path: "/sla", changeFrequency: "monthly", priority: 0.5 },
   ];
 
   const topicalRoutes = TOPICAL_SEO_PAGES.map((t) => ({

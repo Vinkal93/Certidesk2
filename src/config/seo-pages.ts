@@ -3,6 +3,8 @@ export interface SeoFaqItem {
   answer: string;
 }
 
+import { BLOG_POSTS_DATA } from "./blog-posts";
+
 export interface FeaturePageSpec {
   slug: string;
   title: string;
@@ -42,10 +44,12 @@ export interface BlogArticleSpec {
   metaDescription: string;
   keywords: string[];
   cluster: string;
+  tags: string[];
   authorName: string;
   publishedAt: string;
   updatedAt: string;
   readTime: string;
+  coverImage: string;
   excerpt: string;
   sections: Array<{ heading: string; paragraphs: string[] }>;
   relatedFeatures: Array<{ label: string; href: string }>;
@@ -829,169 +833,7 @@ export const SOLUTION_PAGES: SolutionPageSpec[] = [
   },
 ];
 
-export const BLOG_ARTICLES: BlogArticleSpec[] = [
-  {
-    slug: "how-to-manage-computer-institute-digitally",
-    title: "How to Manage a Computer Institute Digitally Without Heavy ERP Lock-In",
-    metaTitle: "How to Manage a Computer Institute Digitally",
-    metaDescription:
-      "A practical guide for Indian computer training centres to digitize admissions, lab batches, fee installments, marksheets, and verifiable certificates.",
-    keywords: [
-      "how to manage a computer institute digitally",
-      "computer institute management software",
-      "institute student record management",
-    ],
-    cluster: "Institute Management",
-    authorName: "CertiDesk Editorial Team",
-    publishedAt: "2026-11-20",
-    updatedAt: "2026-11-26",
-    readTime: "6 min read",
-    excerpt:
-      "Why fragmented spreadsheets break down past 50 students — and how a structured, prepaid institute platform keeps admissions, fees, and certificates connected.",
-    sections: [
-      {
-        heading: "Why Spreadsheets Fail Growing Computer Institutes",
-        paragraphs: [
-          "Most computer institutes start with a physical admission register, a fee receipt book, and a folder of certificate templates. That works for the first 20 students, but quickly breaks down once multiple shifts (Tally, Python, Basic IT, DTP) run in parallel.",
-          "Common failure points include missed fee installments, duplicate student roll numbers, and hours spent manually formatting marksheets and certificates at batch completion.",
-        ],
-      },
-      {
-        heading: "Connect Admissions, Batches, and Credentials in One Flow",
-        paragraphs: [
-          "When a student is admitted into a digital institute system, their Student ID should automatically flow through batch rosters, daily attendance, fee installments, examination marksheets, and final course certificates.",
-          "In CertiDesk Pro, institutes self-register in minutes, configure courses and batches, and admit students using a prepaid wallet model—meaning you never pay for unused seats during off-peak months.",
-        ],
-      },
-      {
-        heading: "What to Check Before Adopting Institute Software",
-        paragraphs: [
-          "Look for tenant-isolated student records, server-enforced staff permissions, transparent INR pricing, and public certificate verification so employers can trust the credentials your academy issues.",
-        ],
-      },
-    ],
-    relatedFeatures: [
-      { label: "Institute Management", href: "/features/institute-management" },
-      { label: "Computer Institutes Solution", href: "/solutions/computer-institutes" },
-      { label: "Prepaid Wallet Billing", href: "/features/wallet" },
-    ],
-  },
-  {
-    slug: "certificate-management-and-public-verification-guide",
-    title:
-      "Certificate Management Workflow: From Course Completion to Public Verification",
-    metaTitle: "Institute Certificate Management & Verification Guide",
-    metaDescription:
-      "Learn how training institutes eliminate manual certificate typos and build employer trust using database-linked certificates and public verification IDs.",
-    keywords: [
-      "certificate management workflow",
-      "certificate verification systems",
-      "institute certificate management",
-    ],
-    cluster: "Certificates",
-    authorName: "CertiDesk Editorial Team",
-    publishedAt: "2026-11-22",
-    updatedAt: "2026-11-26",
-    readTime: "5 min read",
-    excerpt:
-      "Manual certificate editing wastes staff hours and invites forgery. Here is how database-backed issuance and public verification solve both.",
-    sections: [
-      {
-        heading: "The Hidden Cost of Manual Certificate Design",
-        paragraphs: [
-          "Re-typing student names, course titles, and completion dates into static design files is one of the most error-prone tasks in training institutes. A single typo forces re-printing and erodes student confidence.",
-        ],
-      },
-      {
-        heading: "How Database-Driven Issuance & Public Verification Work",
-        paragraphs: [
-          "By issuing certificates directly from verified student and course records, institute admins guarantee consistent spelling, numbering, and completion dates.",
-          "With CertiDesk Pro, every issued certificate receives a unique verification ID accessible on /verify/[verificationId], allowing employers or institutions to confirm live issued or revoked status instantly.",
-        ],
-      },
-    ],
-    relatedFeatures: [
-      { label: "Certificate Generator", href: "/features/certificate-generator" },
-      { label: "Marksheet Generator", href: "/features/marksheet-generator" },
-    ],
-  },
-  {
-    slug: "student-marksheet-and-exam-result-workflow",
-    title: "Designing a Reliable Student Marksheet & Examination Result Workflow",
-    metaTitle: "Student Marksheet & Examination Management Workflow",
-    metaDescription:
-      "How coaching and vocational institutes standardize subject setup, marks entry, grade calculation, and Student Portal marksheet delivery.",
-    keywords: [
-      "how to create student marksheets",
-      "examination result management",
-      "marksheet generator software",
-    ],
-    cluster: "Marksheets",
-    authorName: "CertiDesk Editorial Team",
-    publishedAt: "2026-11-24",
-    updatedAt: "2026-11-26",
-    readTime: "5 min read",
-    excerpt:
-      "Standardizing exam subjects, marks entry, and result calculation saves faculty time and connects academic performance directly to certification.",
-    sections: [
-      {
-        heading: "Standardize Subjects and Passing Thresholds First",
-        paragraphs: [
-          "Before entering marks, define clear subject maximums and passing thresholds per exam. This ensures consistent grading across batches and instructors.",
-        ],
-      },
-      {
-        heading: "Publish Directly to the Student Portal",
-        paragraphs: [
-          "Instead of printing and distributing paper sheets manually for every unit test, publishing marksheets inside the Student Portal gives learners immediate, accurate visibility while keeping a permanent institutional archive.",
-        ],
-      },
-    ],
-    relatedFeatures: [
-      { label: "Marksheet Generator", href: "/features/marksheet-generator" },
-      { label: "Student Management", href: "/features/student-management" },
-    ],
-  },
-  {
-    slug: "prepaid-wallet-vs-annual-erp-contracts",
-    title:
-      "Prepaid Wallet vs. Annual ERP Contracts: What Works Better for Growing Institutes?",
-    metaTitle: "Prepaid Institute Software vs Annual ERP Contracts",
-    metaDescription:
-      "Compare rigid annual institute ERP subscriptions against CertiDesk Pro's ₹0-start prepaid Razorpay wallet model for Indian coaching and computer institutes.",
-    keywords: [
-      "institute management software pricing",
-      "prepaid institute wallet",
-      "coaching institute software India",
-    ],
-    cluster: "Institute Operations",
-    authorName: "CertiDesk Editorial Team",
-    publishedAt: "2026-11-25",
-    updatedAt: "2026-11-26",
-    readTime: "4 min read",
-    excerpt:
-      "Why seasonal coaching centres and independent computer academies prefer pay-as-you-grow prepaid credits over ₹25,000+ upfront annual lock-ins.",
-    sections: [
-      {
-        heading: "The Problem With Upfront Annual Lock-Ins",
-        paragraphs: [
-          "Many institute ERPs in India charge ₹24,999 to ₹50,000+ upfront per year regardless of how many students you actually admit. For new or seasonal institutes, that fixed cost hurts cash flow.",
-        ],
-      },
-      {
-        heading: "How CertiDesk Pro's Prepaid Wallet Model Works",
-        paragraphs: [
-          "CertiDesk Pro lets you register your institute at ₹0, explore your workspace, and recharge via Razorpay (₹500, ₹1,000, or ₹2,000 with a ₹200 promotional bonus on ₹2,000) when you are ready to admit students.",
-          "Every admission checks available credits atomically and logs a transparent ledger entry—zero negative balances and zero hidden recurring surprises.",
-        ],
-      },
-    ],
-    relatedFeatures: [
-      { label: "Prepaid Wallet", href: "/features/wallet" },
-      { label: "Pricing Overview", href: "/pricing" },
-    ],
-  },
-];
+export const BLOG_ARTICLES: BlogArticleSpec[] = BLOG_POSTS_DATA;
 
 export function getFeatureBySlug(slug: string): FeaturePageSpec | undefined {
   return FEATURE_PAGES.find((f) => f.slug === slug);
