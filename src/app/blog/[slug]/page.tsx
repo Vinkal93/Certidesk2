@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, Calendar, User } from "lucide-react";
@@ -101,6 +102,16 @@ export default async function BlogArticlePage({
               <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
               Updated {article.updatedAt} · {article.readTime}
             </span>
+          </div>
+
+          <div className="bg-surface relative mt-8 aspect-[16/9] w-full overflow-hidden rounded-2xl">
+            <Image
+              src={article.coverImage}
+              alt={article.title}
+              fill
+              sizes="(max-width: 1024px) 100vw, 800px"
+              className="object-cover"
+            />
           </div>
         </Container>
       </Section>

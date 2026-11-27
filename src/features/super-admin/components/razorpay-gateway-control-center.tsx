@@ -150,19 +150,32 @@ export function RazorpayGatewayControlCenter({
     e.preventDefault();
     const keyId = environment === "test" ? testKeyId : liveKeyId;
     const keySecret = environment === "test" ? testKeySecret : liveKeySecret;
+    const inlineWebhookSecret =
+      environment === "test" ? testWebhookSecret : liveWebhookSecret;
     const data = await callEndpoint<SafeGatewayOverviewData>(
       "/api/super-admin/payment-gateway/razorpay/configure",
       { environment, keyId, keySecret },
       `${environment.toUpperCase()} credentials saved to Secret Manager.`
     );
     if (data) {
-      setOverview(data);
+      let latest = data;
+      if (inlineWebhookSecret.trim()) {
+        const whData = await callEndpoint<SafeGatewayOverviewData>(
+          "/api/super-admin/payment-gateway/razorpay/webhook-secret",
+          { environment, webhookSecret: inlineWebhookSecret.trim() },
+          `${environment.toUpperCase()} credentials and webhook secret saved. Click Test Connection, then Activate.`
+        );
+        if (whData) latest = whData;
+      }
+      setOverview(latest);
       if (environment === "test") {
         setTestKeyId("");
         setTestKeySecret("");
+        if (inlineWebhookSecret.trim()) setTestWebhookSecret("");
       } else {
         setLiveKeyId("");
         setLiveKeySecret("");
+        if (inlineWebhookSecret.trim()) setLiveWebhookSecret("");
       }
     }
   };
@@ -398,6 +411,18 @@ export function RazorpayGatewayControlCenter({
                 onChange={(e) => setTestKeySecret(e.target.value)}
                 required
               />
+              <Input
+                label="Test Webhook Secret (optional here or save below)"
+                type="password"
+                placeholder={
+                  overview.testWebhookConfigured
+                    ? "Configured (enter to replace)"
+                    : "Enter Test Webhook Secret"
+                }
+                leftAddon={<Webhook className="h-4 w-4" aria-hidden="true" />}
+                value={testWebhookSecret}
+                onChange={(e) => setTestWebhookSecret(e.target.value)}
+              />
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" size="sm" loading={loading}>
                   Save Test Credentials
@@ -411,6 +436,49 @@ export function RazorpayGatewayControlCenter({
                   onClick={() => handleTestConnection("test")}
                 >
                   Test Connection
+                </Button>
+              </div>
+            </form>
+
+            {/* Quick Inline Test Webhook Save */}
+            <form
+              onSubmit={(e) => handleSaveWebhookSecret(e, "test")}
+              className="border-border bg-surface space-y-2 rounded-lg border p-3"
+            >
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-foreground font-medium">
+                  Test Webhook URL &amp; Secret
+                </span>
+                <Badge variant={overview.testWebhookConfigured ? "success" : "warning"}>
+                  {overview.testWebhookConfigured ? "Configured" : "Required"}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="border-border bg-background flex-1 truncate rounded border px-2 py-1 font-mono text-[11px]">
+                  {overview.webhookUrls.test}
+                </code>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(overview.webhookUrls.test);
+                    setCopiedUrl("test");
+                  }}
+                >
+                  <Copy className="h-3 w-3" aria-hidden="true" />
+                  {copiedUrl === "test" ? "Copied" : "Copy"}
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="Save Test Webhook Secret only..."
+                  value={testWebhookSecret}
+                  onChange={(e) => setTestWebhookSecret(e.target.value)}
+                />
+                <Button type="submit" size="sm" variant="outline" loading={loading}>
+                  Save Webhook
                 </Button>
               </div>
             </form>
@@ -447,6 +515,18 @@ export function RazorpayGatewayControlCenter({
                 onChange={(e) => setLiveKeySecret(e.target.value)}
                 required
               />
+              <Input
+                label="Live Webhook Secret (optional here or save below)"
+                type="password"
+                placeholder={
+                  overview.liveWebhookConfigured
+                    ? "Configured (enter to replace)"
+                    : "Enter Live Webhook Secret"
+                }
+                leftAddon={<Webhook className="h-4 w-4" aria-hidden="true" />}
+                value={liveWebhookSecret}
+                onChange={(e) => setLiveWebhookSecret(e.target.value)}
+              />
               <Checkbox
                 label="Confirm Razorpay Live merchant account is KYC-approved for production capture"
                 checked={liveMerchantApproved}
@@ -465,6 +545,49 @@ export function RazorpayGatewayControlCenter({
                   onClick={() => handleTestConnection("live")}
                 >
                   Test Connection
+                </Button>
+              </div>
+            </form>
+
+            {/* Quick Inline Live Webhook Save */}
+            <form
+              onSubmit={(e) => handleSaveWebhookSecret(e, "live")}
+              className="border-border bg-surface space-y-2 rounded-lg border p-3"
+            >
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-foreground font-medium">
+                  Live Webhook URL &amp; Secret
+                </span>
+                <Badge variant={overview.liveWebhookConfigured ? "success" : "warning"}>
+                  {overview.liveWebhookConfigured ? "Configured" : "Required"}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="border-border bg-background flex-1 truncate rounded border px-2 py-1 font-mono text-[11px]">
+                  {overview.webhookUrls.live}
+                </code>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(overview.webhookUrls.live);
+                    setCopiedUrl("live");
+                  }}
+                >
+                  <Copy className="h-3 w-3" aria-hidden="true" />
+                  {copiedUrl === "live" ? "Copied" : "Copy"}
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="Save Live Webhook Secret only..."
+                  value={liveWebhookSecret}
+                  onChange={(e) => setLiveWebhookSecret(e.target.value)}
+                />
+                <Button type="submit" size="sm" variant="outline" loading={loading}>
+                  Save Webhook
                 </Button>
               </div>
             </form>

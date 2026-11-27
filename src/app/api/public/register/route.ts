@@ -1,10 +1,17 @@
 import { NextRequest } from "next/server";
 import { publicRegisterSchema } from "@/lib/validation/registration";
+import { assertServiceAllowed } from "@/services/emergency-policy.service";
 import { registerPublicInstitute } from "@/services/registration.service";
 import { handleApiError, jsonError, jsonOk } from "@/lib/utils/api-response";
 
 export async function POST(request: NextRequest) {
   try {
+    await assertServiceAllowed({
+      serviceId: "admissions",
+      operation: "register_institute",
+      isWrite: true,
+      actorRole: "public",
+    });
     const body: unknown = await request.json().catch(() => null);
     const parsed = publicRegisterSchema.safeParse(body);
 

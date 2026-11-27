@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { requireSessionUser } from "@/lib/security/session";
+import { assertServiceAllowed } from "@/services/emergency-policy.service";
 import {
   issueCertificate,
   listInstituteCertificates,
@@ -46,10 +47,24 @@ export async function POST(request: NextRequest) {
     }
 
     if (parsed.data.action === "issue") {
+      await assertServiceAllowed({
+        serviceId: "certificates",
+        instituteId: actor.instituteId,
+        operation: "issue",
+        isWrite: true,
+        actorRole: actor.role,
+      });
       const certificate = await issueCertificate(actor, parsed.data);
       return jsonOk({ certificate }, 201);
     }
 
+    await assertServiceAllowed({
+      serviceId: "certificates",
+      instituteId: actor.instituteId,
+      operation: "revoke",
+      isWrite: true,
+      actorRole: actor.role,
+    });
     const certificate = await revokeCertificate(
       actor,
       parsed.data.certificateId,

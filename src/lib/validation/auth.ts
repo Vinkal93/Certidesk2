@@ -37,6 +37,7 @@ export const resolveLoginIdentifierSchema = z.object({
 export const createSessionSchema = z.object({
   idToken: z.string().min(20, "Invalid authentication token."),
   portal: portalSchema,
+  secretCode: z.string().trim().max(64).optional(),
 });
 
 export type SuperAdminLoginValues = z.infer<typeof superAdminLoginSchema>;

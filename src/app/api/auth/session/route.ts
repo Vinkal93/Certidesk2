@@ -38,6 +38,8 @@ export async function POST(request: NextRequest) {
     const user = await establishPortalSession(parsed.data.idToken, parsed.data.portal, {
       ipAddress,
       userAgent,
+      secretCode: parsed.data.secretCode,
+      enforceSuperAdminSecret: parsed.data.portal === "super_admin",
     });
     return jsonOk({ user });
   } catch (error) {

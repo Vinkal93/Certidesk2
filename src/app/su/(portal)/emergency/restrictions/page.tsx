@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/security/session";
-import { getEmergencyOverview } from "@/services/emergency.service";
-import { EmergencyOpsClient } from "@/features/super-admin/components/emergency-ops-client";
+import { listServiceRestrictions } from "@/services/emergency-ops.service";
+import { RestrictionsClient } from "@/features/super-admin/components/emergency/restrictions-client";
 
 export const metadata: Metadata = {
   title: "Service Restrictions",
@@ -13,25 +13,13 @@ export default async function SuEmergencyRestrictionsPage() {
   const user = await getSessionUser();
   if (!user || user.role !== "super_admin") redirect("/su");
 
-  const overview = await getEmergencyOverview(user);
+  const data = await listServiceRestrictions(user);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Service Restrictions</h1>
-        <p className="text-muted-foreground text-sm">
-          Selectively pause registrations, payment checkout, or certificate issuance.
-        </p>
-      </div>
-      <EmergencyOpsClient
-        initialFlags={overview.active.flags}
-        initialReason={overview.active.reason}
-        {...(overview.active.expiresAt !== undefined
-          ? { initialExpiresAt: overview.active.expiresAt }
-          : {})}
-        initialExpired={overview.active.expired}
-        initialActions={overview.actions}
-      />
-    </div>
+    <RestrictionsClient
+      initialServices={data.services}
+      initialRestrictions={data.restrictions}
+      institutes={data.institutes}
+    />
   );
 }

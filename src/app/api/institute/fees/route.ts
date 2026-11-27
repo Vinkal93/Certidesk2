@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { requireSessionUser } from "@/lib/security/session";
+import { assertServiceAllowed } from "@/services/emergency-policy.service";
 import {
   collectStudentFeePayment,
   createStudentFeePlan,
@@ -37,6 +38,13 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const actor = await requireSessionUser("institute");
+    await assertServiceAllowed({
+      serviceId: "fee_management",
+      instituteId: actor.instituteId,
+      operation: "collect_fee",
+      isWrite: true,
+      actorRole: actor.role,
+    });
     const body: unknown = await request.json().catch(() => null);
     const parsed = feeActionSchema.safeParse(body);
     if (!parsed.success) {
