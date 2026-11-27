@@ -9,6 +9,8 @@ const adjustSchema = z.object({
   type: z.enum(["credit", "debit"]),
   amountRupees: z.coerce.number().positive(),
   reason: z.string().trim().min(5).max(200),
+  reference: z.string().trim().max(80).optional(),
+  internalNote: z.string().trim().max(240).optional(),
   idempotencyKey: z.string().trim().min(4).max(80),
 });
 

@@ -58,6 +58,12 @@ export default async function SuperAdminInstituteDetailPage({
                 {institute.code} · {institute.id}
               </p>
             </div>
+            <Link
+              href={`/su/institutes/${institute.id}/wallet`}
+              className="border-border bg-background text-foreground hover:bg-surface inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold shadow-xs transition-colors"
+            >
+              Manage Wallet &amp; Ledger
+            </Link>
           </div>
 
           <InstituteDetailClient

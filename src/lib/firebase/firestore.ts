@@ -33,6 +33,14 @@ import type {
   PlanVersionRecord,
 } from "@/types/billing";
 import type {
+  FeeReceiptRecord,
+  FeeRefundRecord,
+  FeeStructureRecord,
+  InstituteAccountRecord,
+  InstituteCategoryRecord,
+  InstituteLedgerEntryRecord,
+} from "@/types/finance";
+import type {
   ReportDefinitionRecord,
   ReportExportRecord,
   ReportScheduleRecord,
@@ -65,6 +73,12 @@ export const COLLECTIONS = {
   REPORT_DEFINITIONS: "reportDefinitions",
   REPORT_SCHEDULES: "reportSchedules",
   REPORT_EXPORTS: "reportExports",
+  FEE_STRUCTURES: "feeStructures",
+  FEE_RECEIPTS: "feeReceipts",
+  FEE_REFUNDS: "feeRefunds",
+  INSTITUTE_CATEGORIES: "instituteCategories",
+  INSTITUTE_ACCOUNTS: "instituteAccounts",
+  INSTITUTE_LEDGER_ENTRIES: "instituteLedgerEntries",
 } as const;
 
 function typedCollection<T extends DocumentData>(name: string): CollectionReference<T> {
@@ -175,4 +189,30 @@ export function reportSchedulesCollection() {
 
 export function reportExportsCollection() {
   return typedCollection<ReportExportRecord>(COLLECTIONS.REPORT_EXPORTS);
+}
+
+export function feeStructuresCollection() {
+  return typedCollection<FeeStructureRecord>(COLLECTIONS.FEE_STRUCTURES);
+}
+
+export function feeReceiptsCollection() {
+  return typedCollection<FeeReceiptRecord>(COLLECTIONS.FEE_RECEIPTS);
+}
+
+export function feeRefundsCollection() {
+  return typedCollection<FeeRefundRecord>(COLLECTIONS.FEE_REFUNDS);
+}
+
+export function instituteCategoriesCollection() {
+  return typedCollection<InstituteCategoryRecord>(COLLECTIONS.INSTITUTE_CATEGORIES);
+}
+
+export function instituteAccountsCollection() {
+  return typedCollection<InstituteAccountRecord>(COLLECTIONS.INSTITUTE_ACCOUNTS);
+}
+
+export function instituteLedgerEntriesCollection() {
+  return typedCollection<InstituteLedgerEntryRecord>(
+    COLLECTIONS.INSTITUTE_LEDGER_ENTRIES
+  );
 }

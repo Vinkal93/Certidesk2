@@ -120,13 +120,17 @@ export interface WalletTransactionRecord {
   bucket?: WalletLedgerBucket;
   direction?: WalletTransactionType;
   amountPaise: number;
+  balanceBeforePaise?: number;
   balanceAfterPaise: number;
   paidBalanceAfterPaise?: number;
   bonusBalanceAfterPaise?: number;
+  currency?: "INR";
   reason: WalletTransactionReason;
   source?: string;
   referenceId: string;
+  reference?: string | null;
   idempotencyKey?: string;
+  status?: "completed" | "reversed";
   actorUid: string;
   note: string;
   metadata?: Record<string, string | number | boolean | null>;
@@ -225,7 +229,11 @@ export type AuditAction =
   | "EMERGENCY_ACTION_ROLLED_BACK"
   | "INCIDENT_CREATED"
   | "INCIDENT_UPDATED"
-  | "SECURITY_SESSIONS_REVOKED";
+  | "SECURITY_SESSIONS_REVOKED"
+  | "FEE_STRUCTURE_CREATED"
+  | "FEE_PAYMENT_COLLECTED"
+  | "FEE_REFUND_PROCESSED"
+  | "LEDGER_ENTRY_POSTED";
 
 export interface AuditLogRecord {
   id: string;

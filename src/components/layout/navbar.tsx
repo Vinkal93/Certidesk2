@@ -7,6 +7,7 @@ import { useMobileMenu } from "@/hooks/use-mobile-menu";
 import { Container } from "@/components/ui/container";
 import { buttonVariants } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Logo } from "./logo";
 
 export function Navbar() {
@@ -34,6 +35,7 @@ export function Navbar() {
           </nav>
 
           <div className="hidden items-center gap-3 lg:flex">
+            <ThemeToggle />
             <Link
               href="/login"
               className={buttonVariants({ variant: "ghost", size: "sm" })}

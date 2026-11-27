@@ -11,9 +11,11 @@ export const instituteLoginSchema = z.object({
   instituteId: z
     .string()
     .trim()
-    .min(3, "Institute ID is required.")
-    .max(40, "Institute ID is too long.")
-    .transform((v) => v.toUpperCase()),
+    .min(3, "Institute ID, email, or mobile number is required.")
+    .max(120, "Identifier is too long.")
+    .transform((v) =>
+      v.includes("@") || /^\+?\d[\d\s-]{8,}$/.test(v) ? v : v.toUpperCase()
+    ),
   password: z.string().min(6, "Password must be at least 6 characters."),
 });
 
@@ -29,12 +31,7 @@ export const studentLoginSchema = z.object({
 
 export const resolveLoginIdentifierSchema = z.object({
   portal: z.enum(["institute", "student"]),
-  identifier: z
-    .string()
-    .trim()
-    .min(3, "Identifier is required.")
-    .max(60)
-    .transform((v) => v.toUpperCase()),
+  identifier: z.string().trim().min(3, "Identifier is required.").max(120),
 });
 
 export const createSessionSchema = z.object({

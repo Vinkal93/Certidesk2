@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { AlertCircle, ArrowRight, Lock } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, EyeOff, Lock } from "lucide-react";
 import { getClientAuth, isFirebaseClientConfigured } from "@/lib/firebase/client";
 import {
   instituteLoginSchema,
@@ -40,6 +40,8 @@ export function PortalLoginForm({
   const router = useRouter();
   const [identifier, setIdentifier] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [showForgotHelp, setShowForgotHelp] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -160,14 +162,14 @@ export function PortalLoginForm({
     portal === "super_admin"
       ? "Super Admin Email"
       : portal === "institute"
-        ? "Institute ID"
+        ? "Institute ID, Email, or Mobile Number"
         : "Student ID";
 
   const fieldPlaceholder =
     portal === "super_admin"
       ? "admin@certidesk.app"
       : portal === "institute"
-        ? "e.g. INS-APEX-1A2B"
+        ? "e.g. INS-APEX-1A2B, owner@inst.edu, or 9876543210"
         : "e.g. STU-1A2B26-3C4D5E";
 
   return (
@@ -201,16 +203,49 @@ export function PortalLoginForm({
           required
         />
 
-        <Input
-          label="Password"
-          type="password"
-          placeholder="Enter your password"
-          autoComplete="current-password"
-          leftAddon={<Lock className="h-4 w-4" aria-hidden="true" />}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <div className="relative">
+          <Input
+            label="Password"
+            type={showPassword ? "text" : "password"}
+            placeholder="Enter your password"
+            autoComplete="current-password"
+            leftAddon={<Lock className="h-4 w-4" aria-hidden="true" />}
+            className="pr-10"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="text-muted hover:text-foreground absolute top-[34px] right-3 cursor-pointer p-1"
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+        </div>
+
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => setShowForgotHelp((prev) => !prev)}
+            className="text-primary cursor-pointer text-xs font-medium hover:underline"
+          >
+            Forgot password?
+          </button>
+        </div>
+
+        {showForgotHelp ? (
+          <div className="border-border bg-surface text-muted rounded-lg border p-3 text-xs leading-relaxed">
+            {portal === "student"
+              ? "Contact your Institute Admin to reset your Student Portal password or reissue temporary activation credentials."
+              : "Use your registered owner email or contact CertiDesk Pro support to verify ownership and reset your password."}
+          </div>
+        ) : null}
 
         <Button
           type="submit"
