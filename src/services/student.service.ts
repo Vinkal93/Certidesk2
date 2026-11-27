@@ -19,8 +19,10 @@ import {
   InsufficientWalletBalanceError,
   resolveWalletBuckets,
 } from "./wallet.service";
+import { validateCourseAndBatchRelationship } from "./academic.service";
 import type { AdmitStudentInput, UpdateStudentInput } from "@/lib/validation/student";
 import type { SessionUser } from "@/types/auth";
+import type { BatchRecord, CourseRecord } from "@/types/academic";
 import type { StudentRecord } from "@/types/domain";
 
 export async function listInstituteStudents(
@@ -253,12 +255,31 @@ export async function admitStudent(
   let createdUid: string | null = null;
 
   try {
-    const authUser = await auth.createUser({
-      email: normalizedEmail,
-      password: temporaryPassword,
-      displayName: input.fullName,
-      disabled: false,
-    });
+    const authUser = await auth
+      .createUser({
+        email: normalizedEmail,
+        password: temporaryPassword,
+        displayName: input.fullName,
+        disabled: false,
+      })
+      .catch((err: unknown) => {
+        const code = (err as { code?: string } | null)?.code;
+        if (code === "auth/email-already-exists") {
+          throw new AuthError(
+            409,
+            "EMAIL_ALREADY_EXISTS",
+            `The email "${normalizedEmail}" is already registered to another account. Please use a unique student email.`
+          );
+        }
+        if (code === "auth/invalid-email") {
+          throw new AuthError(
+            400,
+            "INVALID_EMAIL",
+            "Please enter a valid student email."
+          );
+        }
+        throw err;
+      });
     createdUid = authUser.uid;
 
     await opRef.update({
@@ -304,6 +325,24 @@ export async function admitStudent(
       const latestInstitute = instSnap.data();
       if (!instSnap.exists || !latestInstitute || latestInstitute.status !== "active") {
         throw new AuthError(423, "INSTITUTE_SUSPENDED", "Institute is not active.");
+      }
+
+      if (input.courseId && input.batchId) {
+        const courseRef = db.collection("courses").doc(input.courseId);
+        const batchRef = db.collection("batches").doc(input.batchId);
+        const [courseSnap, batchSnap] = await Promise.all([
+          tx.get(courseRef),
+          tx.get(batchRef),
+        ]);
+        const { batch } = validateCourseAndBatchRelationship({
+          instituteId: institute.id,
+          course: courseSnap.data() as CourseRecord | undefined,
+          batch: batchSnap.data() as BatchRecord | undefined,
+        });
+        tx.update(batchRef, {
+          enrolledCount: (batch.enrolledCount ?? 0) + 1,
+          updatedAt: now,
+        });
       }
 
       const txRecord = applyWalletDebitInTransaction(tx, latestInstitute, {

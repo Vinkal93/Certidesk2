@@ -25,7 +25,9 @@
   --font-sans:
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
 
   /* Font Sizes & Line Heights */
   --text-xs: 0.75rem;
@@ -179,7 +181,9 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
     line-height: 1.6;
+    overflow-x: hidden;
   }
 
   :focus-visible {
@@ -200,4 +204,56 @@
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px var(--ring-color);
   }
+}
+
+/* Sleek custom vertical scrollbar for portal sidebars */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+
+.sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.55);
+}
+
+.dark .sidebar-scroll {
+  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+}
+
+.dark .sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.25);
+}
+
+.dark .sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.45);
+}
+
+/* Prevent double container/section padding inside portal <main> across all viewports & zoom levels */
+#main-content main {
+  min-height: auto !important;
+}
+
+#main-content section {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#main-content section > div {
+  max-width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }

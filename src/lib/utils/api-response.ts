@@ -56,6 +56,31 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorBody> {
   if (error instanceof AuthError) {
     return jsonError(error.status, error.code, error.message);
   }
+  const maybeZod = error as {
+    name?: string;
+    issues?: Array<{ message?: string }>;
+  } | null;
+  if (maybeZod?.name === "ZodError" && Array.isArray(maybeZod.issues)) {
+    return jsonError(
+      400,
+      "VALIDATION_ERROR",
+      maybeZod.issues[0]?.message ?? "Invalid request payload."
+    );
+  }
+  const firebaseCode = (error as { code?: string } | null)?.code;
+  if (firebaseCode === "auth/email-already-exists") {
+    return jsonError(
+      409,
+      "EMAIL_ALREADY_EXISTS",
+      "An account with this email address already exists. Please use a different email."
+    );
+  }
+  if (firebaseCode === "auth/invalid-email") {
+    return jsonError(400, "INVALID_EMAIL", "Please provide a valid email address.");
+  }
+  if (firebaseCode === "auth/weak-password" || firebaseCode === "auth/invalid-password") {
+    return jsonError(400, "WEAK_PASSWORD", "Password must be at least 6 characters.");
+  }
   console.error("[API_ERROR]", error);
   return jsonError(500, "INTERNAL_ERROR", "An unexpected server error occurred.");
 }

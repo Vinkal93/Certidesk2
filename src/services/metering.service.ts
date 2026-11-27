@@ -151,3 +151,157 @@ export async function getUsageOverview(
     thresholds: [70, 85, 95, 100],
   };
 }
+
+export interface InstituteUsageBreakdown {
+  instituteId: string;
+  instituteName: string;
+  instituteCode: string;
+  status: string;
+  students: number;
+  staff: number;
+  courses: number;
+  batches: number;
+  exams: number;
+  certificates: number;
+  feeReceipts: number;
+  walletTransactions: number;
+  totalUnits: number;
+}
+
+export interface DailyActivityPoint {
+  date: string;
+  label: string;
+  admissions: number;
+  transactions: number;
+  receipts: number;
+  total: number;
+}
+
+export async function getAdvancedUsageOverview(
+  actor: SessionUser,
+  billingPeriod = getCurrentBillingPeriod()
+) {
+  const base = await getUsageOverview(actor, billingPeriod);
+  const db = getAdminFirestore();
+
+  const [
+    instSnap,
+    studentsSnap,
+    usersSnap,
+    coursesSnap,
+    batchesSnap,
+    examsSnap,
+    certsSnap,
+    receiptsSnap,
+    walletTxSnap,
+  ] = await Promise.all([
+    institutesCollection().get(),
+    db.collection("students").get(),
+    db.collection("users").get(),
+    db.collection("courses").get(),
+    db.collection("batches").get(),
+    db.collection("examinations").get(),
+    db.collection("certificates").get(),
+    db.collection("feeReceipts").get(),
+    db.collection("wallet_transactions").get(),
+  ]);
+
+  const breakdownMap = new Map<string, InstituteUsageBreakdown>();
+  for (const doc of instSnap.docs) {
+    const inst = doc.data();
+    breakdownMap.set(inst.id, {
+      instituteId: inst.id,
+      instituteName: inst.name,
+      instituteCode: inst.code,
+      status: inst.status,
+      students: 0,
+      staff: 0,
+      courses: 0,
+      batches: 0,
+      exams: 0,
+      certificates: 0,
+      feeReceipts: 0,
+      walletTransactions: 0,
+      totalUnits: 0,
+    });
+  }
+
+  const bump = (
+    instId: unknown,
+    field: keyof Omit<
+      InstituteUsageBreakdown,
+      "instituteId" | "instituteName" | "instituteCode" | "status" | "totalUnits"
+    >
+  ) => {
+    if (typeof instId !== "string") return;
+    const entry = breakdownMap.get(instId);
+    if (!entry) return;
+    entry[field] += 1;
+    entry.totalUnits += 1;
+  };
+
+  for (const d of studentsSnap.docs) bump(d.data().instituteId, "students");
+  for (const d of usersSnap.docs) {
+    if (d.data().role === "staff") bump(d.data().instituteId, "staff");
+  }
+  for (const d of coursesSnap.docs) bump(d.data().instituteId, "courses");
+  for (const d of batchesSnap.docs) bump(d.data().instituteId, "batches");
+  for (const d of examsSnap.docs) bump(d.data().instituteId, "exams");
+  for (const d of certsSnap.docs) bump(d.data().instituteId, "certificates");
+  for (const d of receiptsSnap.docs) bump(d.data().instituteId, "feeReceipts");
+  for (const d of walletTxSnap.docs) bump(d.data().instituteId, "walletTransactions");
+
+  const instituteBreakdown = Array.from(breakdownMap.values()).sort(
+    (a, b) => b.totalUnits - a.totalUnits
+  );
+
+  // Build 14-day real activity series
+  const today = new Date();
+  const dailyMap = new Map<string, DailyActivityPoint>();
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    dailyMap.set(iso, {
+      date: iso,
+      label: d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+      admissions: 0,
+      transactions: 0,
+      receipts: 0,
+      total: 0,
+    });
+  }
+
+  const bumpDay = (
+    createdAt: unknown,
+    field: "admissions" | "transactions" | "receipts"
+  ) => {
+    if (typeof createdAt !== "string") return;
+    const day = createdAt.slice(0, 10);
+    const point = dailyMap.get(day);
+    if (!point) return;
+    point[field] += 1;
+    point.total += 1;
+  };
+
+  for (const d of studentsSnap.docs) bumpDay(d.data().createdAt, "admissions");
+  for (const d of walletTxSnap.docs) bumpDay(d.data().createdAt, "transactions");
+  for (const d of receiptsSnap.docs) bumpDay(d.data().createdAt, "receipts");
+
+  return {
+    ...base,
+    summary: {
+      totalInstitutes: instSnap.size,
+      activeInstitutes: instSnap.docs.filter((d) => d.data().status === "active").length,
+      totalStudents: studentsSnap.size,
+      totalStaff: usersSnap.docs.filter((d) => d.data().role === "staff").length,
+      totalCourses: coursesSnap.size,
+      totalExams: examsSnap.size,
+      totalCertificates: certsSnap.size,
+      totalReceipts: receiptsSnap.size,
+      totalWalletTx: walletTxSnap.size,
+    },
+    instituteBreakdown,
+    dailySeries: Array.from(dailyMap.values()),
+  };
+}

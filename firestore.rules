@@ -427,6 +427,68 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /studentBatchTransfers/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /questionBank/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /onlineExams/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /examAttempts/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId))
+        || (isStudent() && resource.data.studentId == request.auth.token.studentId);
+      allow write: if false;
+    }
+
+    match /examResults/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId))
+        || (isStudent()
+            && resource.data.studentId == request.auth.token.studentId
+            && resource.data.declared == true);
+      allow write: if false;
+    }
+
+    match /resultRevisions/{docId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /certificateTemplates/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /marksheetTemplates/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // Default deny everything else
     match /{document=**} {
       allow read, write: if false;

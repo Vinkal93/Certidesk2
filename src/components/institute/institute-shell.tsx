@@ -7,7 +7,6 @@ import { signOut } from "firebase/auth";
 import {
   Award,
   BarChart3,
-  Bell,
   BookOpen,
   CalendarCheck,
   ChevronDown,
@@ -40,6 +39,7 @@ import { hasStaffPermission } from "@/lib/security/permissions";
 import { getClientAuth, isFirebaseClientConfigured } from "@/lib/firebase/client";
 import { Logo } from "@/components/layout/logo";
 import { SidebarMenu, type SidebarMenuGroup } from "@/components/portal/sidebar-menu";
+import { PopupNotificationCenter } from "@/components/portal/popup-notification-center";
 import { Badge } from "@/components/ui/badge";
 import { IconButton } from "@/components/ui/icon-button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -80,7 +80,6 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
-  const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [loggingOut, setLoggingOut] = React.useState(false);
 
@@ -303,49 +302,18 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
 
             <ThemeToggle />
 
-            {/* Notifications */}
-            <div className="relative">
-              <IconButton
-                variant="outline"
-                size="sm"
-                aria-label="Notifications"
-                onClick={() => {
-                  setNotificationsOpen((p) => !p);
-                  setProfileOpen(false);
-                }}
-              >
-                <Bell className="h-4 w-4" aria-hidden="true" />
-              </IconButton>
-              {lowBalance && (
-                <span
-                  aria-hidden="true"
-                  className="bg-warning ring-background absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2"
-                />
-              )}
-
-              {notificationsOpen && (
-                <div className="border-border bg-background absolute right-0 mt-2 w-72 rounded-xl border p-3 shadow-lg">
-                  <p className="border-border text-foreground border-b pb-2 text-xs font-semibold">
-                    Institute Alerts
-                  </p>
-                  <div className="mt-2 space-y-2 text-xs">
-                    {lowBalance ? (
-                      <Link
-                        href="/institute/wallet"
-                        onClick={() => setNotificationsOpen(false)}
-                        className="bg-warning-soft text-warning block rounded-lg border border-amber-200 p-2.5"
-                      >
-                        Low wallet balance (₹
-                        {(institute.walletBalancePaise / 100).toFixed(2)}). Recharge to
-                        avoid admission interruptions.
-                      </Link>
-                    ) : (
-                      <p className="text-muted py-2">No urgent alerts right now.</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Popup Messages & Notifications */}
+            <PopupNotificationCenter
+              extraAlert={
+                lowBalance
+                  ? {
+                      title: "Low Wallet Balance",
+                      description: `Balance is ₹${(institute.walletBalancePaise / 100).toFixed(2)}. Recharge to avoid admission interruptions.`,
+                      href: "/institute/wallet",
+                    }
+                  : null
+              }
+            />
 
             {/* Profile Dropdown */}
             <div className="relative">
@@ -353,7 +321,6 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
                 type="button"
                 onClick={() => {
                   setProfileOpen((p) => !p);
-                  setNotificationsOpen(false);
                 }}
                 className="border-border bg-background text-foreground hover:bg-surface flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium"
               >
@@ -407,7 +374,10 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
           </div>
         </header>
 
-        <main id="main-content" className="flex-1 p-4 sm:p-6">
+        <main
+          id="main-content"
+          className="min-w-0 flex-1 overflow-x-hidden p-3 sm:p-5 lg:p-6"
+        >
           {children}
         </main>
       </div>

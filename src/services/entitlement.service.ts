@@ -210,17 +210,25 @@ export async function assignInstituteSubscription(
 ): Promise<InstituteSubscriptionRecord> {
   assertSuperAdmin(actor);
 
+  const isCustomMonthlyFee = input.planId === "__monthly_platform_fee__";
   const [instDoc, planDoc] = await Promise.all([
     institutesCollection().doc(input.instituteId).get(),
-    plansCol().doc(input.planId).get(),
+    isCustomMonthlyFee ? Promise.resolve(null) : plansCol().doc(input.planId).get(),
   ]);
 
   if (!instDoc.exists) {
     throw new AuthError(404, "INSTITUTE_NOT_FOUND", "Institute not found.");
   }
-  const plan = planDoc.data();
-  if (!plan) {
+  const plan = planDoc ? planDoc.data() : undefined;
+  if (!isCustomMonthlyFee && !plan) {
     throw new AuthError(404, "PLAN_NOT_FOUND", "Subscription plan not found.");
+  }
+  if (isCustomMonthlyFee && input.customPriceRupees === undefined) {
+    throw new AuthError(
+      400,
+      "PRICE_REQUIRED",
+      "Monthly platform fee amount (in INR) is required."
+    );
   }
 
   const now = new Date();
@@ -234,8 +242,8 @@ export async function assignInstituteSubscription(
   const priceSnapshotRupees =
     input.customPriceRupees ??
     (input.billingCycle === "yearly"
-      ? plan.yearlyDisplayRupees
-      : plan.monthlyDisplayRupees);
+      ? plan!.yearlyDisplayRupees
+      : plan!.monthlyDisplayRupees);
 
   const existingSnap = await subscriptionsCol()
     .where("instituteId", "==", input.instituteId)
@@ -245,21 +253,30 @@ export async function assignInstituteSubscription(
   const subId = existingDoc ? existingDoc.id : generateId("sub");
   const nowIso = now.toISOString();
 
+  const resolvedPlanId = isCustomMonthlyFee ? "__monthly_platform_fee__" : plan!.id;
+  const resolvedPlanName = isCustomMonthlyFee ? "Platform Monthly Fee" : plan!.name;
+
   const record: InstituteSubscriptionRecord = {
     id: subId,
     instituteId: input.instituteId,
-    planId: plan.id,
-    planName: plan.name,
+    planId: resolvedPlanId,
+    planName: resolvedPlanName,
     status: input.status ?? "active",
     billingCycle: input.billingCycle,
     currentPeriodStart: nowIso,
     currentPeriodEnd: periodEnd.toISOString(),
     priceSnapshotRupees,
-    limitsSnapshot: {
-      maxStudents: plan.maxStudents,
-      maxStaff: plan.maxStaff,
-      storageLimitMb: plan.storageLimitMb,
-    },
+    limitsSnapshot: plan
+      ? {
+          maxStudents: plan.maxStudents,
+          maxStaff: plan.maxStaff,
+          storageLimitMb: plan.storageLimitMb,
+        }
+      : {
+          maxStudents: 10000,
+          maxStaff: 500,
+          storageLimitMb: 10240,
+        },
     createdAt: existingDoc?.data().createdAt ?? nowIso,
     updatedAt: nowIso,
     updatedByUid: actor.uid,
@@ -268,14 +285,14 @@ export async function assignInstituteSubscription(
   await subscriptionsCol().doc(subId).set(record);
 
   await recordAuditLog({
-    action: "SUBSCRIPTION_ASSIGNED",
+    action: isCustomMonthlyFee ? "SUBSCRIPTION_FEE_CONFIGURED" : "SUBSCRIPTION_ASSIGNED",
     actorUid: actor.uid,
     actorRole: actor.role,
     instituteId: input.instituteId,
     targetId: subId,
     metadata: {
-      planId: plan.id,
-      planName: plan.name,
+      planId: resolvedPlanId,
+      planName: resolvedPlanName,
       billingCycle: input.billingCycle,
       priceSnapshotRupees,
       status: record.status,

@@ -147,12 +147,20 @@ export function InstituteDirectoryClient({
                     </Badge>
                   </td>
                   <td className="px-4 py-3.5 text-right">
-                    <Link
-                      href={`/su/institutes/${inst.id}`}
-                      className={buttonVariants({ variant: "outline", size: "sm" })}
-                    >
-                      Manage
-                    </Link>
+                    <div className="flex justify-end gap-1.5">
+                      <Link
+                        href={`/su/institutes/${inst.id}/impression`}
+                        className={buttonVariants({ variant: "primary", size: "sm" })}
+                      >
+                        Live View
+                      </Link>
+                      <Link
+                        href={`/su/institutes/${inst.id}`}
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                      >
+                        Manage
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

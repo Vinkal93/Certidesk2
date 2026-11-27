@@ -4,9 +4,11 @@ import * as React from "react";
 import Link from "next/link";
 import { AlertCircle, CheckCircle2, Copy } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import type { BatchRecord, CourseRecord } from "@/types/academic";
 
 interface AdmittedCredentials {
   studentId: string;
@@ -19,10 +21,38 @@ interface AdmittedCredentials {
 export function AdmitStudentForm({
   admissionFeePaise,
   walletBalancePaise,
+  courses = [],
+  batches = [],
 }: {
   admissionFeePaise: number;
   walletBalancePaise: number;
+  courses?: CourseRecord[];
+  batches?: BatchRecord[];
 }) {
+  const activeCourses = React.useMemo(
+    () => courses.filter((c) => c.status === "active"),
+    [courses]
+  );
+  const [selectedCourseId, setSelectedCourseId] = React.useState(
+    activeCourses[0]?.id ?? ""
+  );
+  const eligibleBatches = React.useMemo(
+    () =>
+      batches.filter(
+        (b) =>
+          b.status === "active" &&
+          b.courseId === selectedCourseId &&
+          b.enrolledCount < b.capacity
+      ),
+    [batches, selectedCourseId]
+  );
+  const [selectedBatchId, setSelectedBatchId] = React.useState(
+    eligibleBatches[0]?.id ?? ""
+  );
+  const effectiveBatchId = eligibleBatches.some((b) => b.id === selectedBatchId)
+    ? selectedBatchId
+    : (eligibleBatches[0]?.id ?? "");
+
   const [fullName, setFullName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
@@ -40,26 +70,45 @@ export function AdmitStudentForm({
   const [copied, setCopied] = React.useState(false);
 
   const insufficientBalance = walletBalancePaise < admissionFeePaise;
+  const activeCourseObj = activeCourses.find((c) => c.id === selectedCourseId);
+  const activeBatchObj = eligibleBatches.find((b) => b.id === effectiveBatchId);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
+      const payload =
+        activeCourses.length > 0
+          ? {
+              fullName,
+              email,
+              phone,
+              guardianName,
+              guardianPhone,
+              address,
+              admissionDate,
+              courseId: activeCourseObj?.id,
+              courseName: activeCourseObj?.name ?? courseName,
+              batchId: activeBatchObj?.id,
+              batchName: activeBatchObj?.name ?? batchName,
+            }
+          : {
+              fullName,
+              email,
+              phone,
+              guardianName,
+              guardianPhone,
+              address,
+              admissionDate,
+              courseName,
+              batchName,
+            };
+
       const res = await fetch("/api/institute/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName,
-          email,
-          phone,
-          guardianName,
-          guardianPhone,
-          address,
-          admissionDate,
-          courseName,
-          batchName,
-        }),
+        body: JSON.stringify(payload),
       });
       const json = (await res.json()) as
         | {
@@ -287,29 +336,80 @@ export function AdmitStudentForm({
               onChange={(e) => setAdmissionDate(e.target.value)}
             />
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              label="Course Name"
-              placeholder="e.g. Diploma in Python"
-              value={courseName}
-              onChange={(e) => setCourseName(e.target.value)}
-              required
-            />
-            <Input
-              label="Batch Name"
-              placeholder="e.g. Morning Batch A"
-              value={batchName}
-              onChange={(e) => setBatchName(e.target.value)}
-              required
-            />
-          </div>
+          {activeCourses.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Select
+                label="Course *"
+                value={selectedCourseId}
+                onChange={(e) => setSelectedCourseId(e.target.value)}
+                options={activeCourses.map((c) => ({
+                  label: `${c.name} (${c.code})`,
+                  value: c.id,
+                }))}
+              />
+              <Select
+                label="Eligible Batch *"
+                value={effectiveBatchId}
+                onChange={(e) => setSelectedBatchId(e.target.value)}
+                options={
+                  eligibleBatches.length === 0
+                    ? [{ label: "No active batch with open seats", value: "" }]
+                    : eligibleBatches.map((b) => ({
+                        label: `${b.name} (${b.capacity - b.enrolledCount} seats left)`,
+                        value: b.id,
+                      }))
+                }
+              />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="border-border bg-surface text-muted flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-xs">
+                <span>
+                  Tip: Create structured Courses &amp; Batches to enforce seat capacity
+                  and batch rosters.
+                </span>
+                <div className="flex gap-2">
+                  <Link
+                    href="/institute/courses"
+                    className="text-primary font-semibold hover:underline"
+                  >
+                    + Create Course
+                  </Link>
+                  <Link
+                    href="/institute/batches"
+                    className="text-primary font-semibold hover:underline"
+                  >
+                    + Create Batch
+                  </Link>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Input
+                  label="Course Name"
+                  placeholder="e.g. Diploma in Python"
+                  value={courseName}
+                  onChange={(e) => setCourseName(e.target.value)}
+                  required
+                />
+                <Input
+                  label="Batch Name"
+                  placeholder="e.g. Morning Batch A"
+                  value={batchName}
+                  onChange={(e) => setBatchName(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+          )}
 
           <Button
             type="submit"
             size="lg"
             fullWidth
             loading={loading}
-            disabled={insufficientBalance}
+            disabled={
+              insufficientBalance || (activeCourses.length > 0 && !effectiveBatchId)
+            }
           >
             Admit Student &amp; Deduct ₹{(admissionFeePaise / 100).toFixed(2)}
           </Button>

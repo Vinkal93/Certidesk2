@@ -58,12 +58,20 @@ export default async function SuperAdminInstituteDetailPage({
                 {institute.code} · {institute.id}
               </p>
             </div>
-            <Link
-              href={`/su/institutes/${institute.id}/wallet`}
-              className="border-border bg-background text-foreground hover:bg-surface inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold shadow-xs transition-colors"
-            >
-              Manage Wallet &amp; Ledger
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={`/su/institutes/${institute.id}/impression`}
+                className="bg-primary hover:bg-primary/90 inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-colors"
+              >
+                Live Impression
+              </Link>
+              <Link
+                href={`/su/institutes/${institute.id}/wallet`}
+                className="border-border bg-background text-foreground hover:bg-surface inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold shadow-xs transition-colors"
+              >
+                Manage Wallet &amp; Ledger
+              </Link>
+            </div>
           </div>
 
           <InstituteDetailClient

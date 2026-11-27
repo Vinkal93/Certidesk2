@@ -38,6 +38,7 @@ export const studentNavGroups: StudentNavGroup[] = [
       { label: "Course & Batch", href: "/student/course", icon: "bookOpen" },
       { label: "Attendance", href: "/student/attendance", icon: "calendarCheck" },
       { label: "Examinations", href: "/student/examinations", icon: "fileSpreadsheet" },
+      { label: "Online Exams", href: "/student/exams", icon: "clipboardCheck" },
       { label: "Results", href: "/student/results", icon: "checkSquare" },
       { label: "Marksheets", href: "/student/marksheets", icon: "clipboardCheck" },
       { label: "Certificates", href: "/student/certificates", icon: "award" },

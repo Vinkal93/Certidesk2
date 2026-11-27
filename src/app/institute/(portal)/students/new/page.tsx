@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getSessionUser } from "@/lib/security/session";
 import { resolveAuthorizedInstitute } from "@/lib/security/tenant";
+import { listBatches, listCourses } from "@/services/academic.service";
+import { resolveWalletBuckets } from "@/services/wallet.service";
 import { PageContainer } from "@/components/layout";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
@@ -20,7 +22,12 @@ export default async function AdmitStudentPage() {
     redirect("/institute/login");
   }
 
-  const institute = await resolveAuthorizedInstitute(user);
+  const [institute, courses, batches] = await Promise.all([
+    resolveAuthorizedInstitute(user),
+    listCourses(user).catch(() => []),
+    listBatches(user).catch(() => []),
+  ]);
+  const wallet = resolveWalletBuckets(institute);
 
   return (
     <PageContainer>
@@ -45,7 +52,9 @@ export default async function AdmitStudentPage() {
 
           <AdmitStudentForm
             admissionFeePaise={institute.pricing.admissionFeePaise}
-            walletBalancePaise={institute.walletBalancePaise}
+            walletBalancePaise={wallet.totalSpendableBalancePaise}
+            courses={courses}
+            batches={batches}
           />
         </Container>
       </Section>
