@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Building2, Layers, ShieldCheck, Sparkles } from "lucide-react";
+import { buildPublicMetadata } from "@/lib/seo/metadata";
 import { PageContainer, SectionHeader } from "@/components/layout";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 
-export const metadata: Metadata = {
-  title: "About",
+export const metadata: Metadata = buildPublicMetadata({
+  title: "About CertiDesk Pro",
   description:
-    "Learn how CertiDesk is engineered to unify admissions, attendance, fees, examinations, marksheets, and certificates for modern educational institutes.",
-  alternates: { canonical: "/about" },
-};
+    "Learn how CertiDesk Pro is engineered to unify admissions, attendance, fees, examinations, marksheets, and verifiable certificates for modern educational institutes.",
+  path: "/about",
+});
 
 const principles = [
   {

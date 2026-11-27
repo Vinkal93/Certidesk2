@@ -40,7 +40,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await admitStudent(actor, parsed.data);
+    const headerKey = request.headers.get("x-idempotency-key")?.trim();
+    const result = await admitStudent(actor, {
+      ...parsed.data,
+      ...(headerKey && !parsed.data.idempotencyKey ? { idempotencyKey: headerKey } : {}),
+    });
     return jsonOk(result, 201);
   } catch (error) {
     return handleApiError(error);

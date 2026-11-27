@@ -1,7 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/security/session";
 import { getStudentPortalContext } from "@/services/student-portal.service";
+import { buildPrivateNoIndexMetadata } from "@/lib/seo/metadata";
 import { StudentShell } from "@/components/student/student-shell";
+
+export const metadata: Metadata = buildPrivateNoIndexMetadata("Student Portal");
 
 export default async function StudentPortalLayout({
   children,

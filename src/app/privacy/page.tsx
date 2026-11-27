@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import { buildPublicMetadata } from "@/lib/seo/metadata";
 import { PageContainer, SectionHeader } from "@/components/layout";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { siteConfig } from "@/config/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPublicMetadata({
   title: "Privacy Policy",
   description: `Privacy Policy for ${siteConfig.name} institute management platform.`,
-  alternates: { canonical: "/privacy" },
-};
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (

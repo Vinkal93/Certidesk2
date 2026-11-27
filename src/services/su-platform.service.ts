@@ -165,6 +165,22 @@ export async function listGlobalStudents(
   return items;
 }
 
+export async function getEffectivePlatformPricing(): Promise<PlatformPricingConfig> {
+  const db = getAdminFirestore();
+  const docSnap = await db.collection("platform_config").doc("pricing").get();
+  return (
+    (docSnap.data() as PlatformPricingConfig | undefined) ?? {
+      id: "pricing" as const,
+      admissionFeePaise: 15000,
+      profileUpdateFeePaise: 10000,
+      certificateFeePaise: 0,
+      effectiveDate: new Date().toISOString().slice(0, 10),
+      updatedAt: new Date(0).toISOString(),
+      updatedByUid: "system",
+    }
+  );
+}
+
 export async function getCentralPricingConfig(actor: SessionUser) {
   assertSuperAdmin(actor);
   const db = getAdminFirestore();

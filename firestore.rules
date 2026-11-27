@@ -285,6 +285,95 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /recharge_plans/{planId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /wallet_bonus_grants/{grantId} {
+      allow read: if isSuperAdmin()
+        || ((isInstituteAdmin() || hasStaffPermission('wallet:read'))
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /admission_operations/{opId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /securityLoginEvents/{eventId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /securitySessions/{sessionId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /securityAlerts/{alertId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /securityAlertRules/{ruleId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /securityPolicies/{policyId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /userPermissionOverrides/{uid} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /planVersions/{versionId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /pricingRules/{ruleId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /billingInvoices/{invoiceId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /creditNotes/{noteId} {
+      allow read: if isSuperAdmin()
+        || (isInstituteAdmin()
+            && belongsToInstitute(resource.data.instituteId)
+            && isActiveInstitute(resource.data.instituteId));
+      allow write: if false;
+    }
+
+    match /reportDefinitions/{defId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /reportSchedules/{schedId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /reportExports/{expId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
     // Default deny everything else
     match /{document=**} {
       allow read, write: if false;

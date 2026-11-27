@@ -541,8 +541,8 @@ export const faqItems: FaqItem[] = [
       "Certificates are generated from verified student and examination records with unique serial numbers and issuance timestamps, reducing manual errors and duplicate issuance.",
   },
   {
-    question: "Which modules are live in this current phase?",
+    question: "How does CertiDesk Pro pricing and the prepaid wallet work?",
     answer:
-      "This Phase 1 release establishes the production foundation, design system, reusable UI library, SEO configuration, and complete product landing page. Portal authentication, database persistence, and interactive operational modules will be built in subsequent phases.",
+      "You can self-register your institute with ₹0 upfront and even skip wallet recharge during onboarding. When ready to admit students, recharge via Razorpay (₹500, ₹1,000, or ₹2,000 with a ₹200 promotional bonus on ₹2,000) and pay only for actual student admissions with an auditable ledger.",
   },
 ];

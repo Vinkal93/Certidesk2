@@ -66,6 +66,18 @@ function makeColProxy(colName: string) {
         }),
       }),
     }),
+    get: async () => {
+      const entries = Array.from(getCol(colName).entries());
+      return {
+        empty: entries.length === 0,
+        size: entries.length,
+        docs: entries.map(([id, data]) => ({
+          id,
+          ref: makeDocRef(colName, id),
+          data: () => structuredClone(data),
+        })),
+      };
+    },
     where: (field: string, _op: string, value: unknown) => ({
       limit: () => ({
         get: async () => ({
@@ -196,9 +208,15 @@ vi.mock("@/lib/firebase/firestore", () => ({
     PAYMENT_GATEWAY_CONFIG: "paymentGatewayConfig",
     GATEWAY_CONFIG_HISTORY: "gateway_config_history",
     WEBHOOK_EVENTS: "webhook_events",
+    RECHARGE_PLANS: "recharge_plans",
+    WALLET_BONUS_GRANTS: "wallet_bonus_grants",
+    ADMISSION_OPERATIONS: "admission_operations",
   },
   institutesCollection: () => makeColProxy("institutes"),
   walletTransactionsCollection: () => makeColProxy("wallet_transactions"),
+  walletBonusGrantsCollection: () => makeColProxy("wallet_bonus_grants"),
+  rechargePlansCollection: () => makeColProxy("recharge_plans"),
+  admissionOperationsCollection: () => makeColProxy("admission_operations"),
   auditLogsCollection: () => makeColProxy("audit_logs"),
   paymentOrdersCollection: () => makeColProxy("payment_orders"),
   paymentGatewayConfigCollection: () => makeColProxy("paymentGatewayConfig"),

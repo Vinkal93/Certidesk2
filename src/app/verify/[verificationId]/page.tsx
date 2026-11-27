@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Award, ShieldAlert, ShieldCheck } from "lucide-react";
 import { getCertificateByVerificationId } from "@/services/certificate.service";
+import { buildPrivateNoIndexMetadata } from "@/lib/seo/metadata";
 import { PageContainer } from "@/components/layout";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
@@ -10,10 +11,10 @@ import { Awards } from "@/components/ui/award";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 
-export const metadata: Metadata = {
-  title: "Verify Certificate",
-  description: "Public certificate verification portal for CertiDesk Pro.",
-};
+export const metadata: Metadata = buildPrivateNoIndexMetadata(
+  "Verify Certificate",
+  "Public certificate verification portal for CertiDesk Pro."
+);
 
 export default async function PublicCertificateVerifyPage({
   params,

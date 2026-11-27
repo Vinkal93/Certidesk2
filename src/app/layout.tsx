@@ -4,6 +4,7 @@ import { siteConfig } from "@/config/site";
 import { Navbar, Footer } from "@/components/layout";
 import { ConditionalMarketingChrome } from "@/components/layout/conditional-chrome";
 import { ActionFeedbackProvider } from "@/components/ui/action-feedback-provider";
+import { AnalyticsScripts } from "@/components/analytics/analytics-scripts";
 import "./globals.css";
 
 const inter = Inter({
@@ -21,25 +22,31 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: `${siteConfig.name} — ${siteConfig.tagline}`,
+    default: `${siteConfig.name} | ${siteConfig.tagline}`,
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
-    locale: "en_US",
+    locale: "en_IN",
     url: siteConfig.url,
     siteName: siteConfig.name,
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
+    title: `${siteConfig.name} | ${siteConfig.tagline}`,
     description: siteConfig.description,
+    images: [
+      {
+        url: `${siteConfig.url}/opengraph-image`,
+        width: 1200,
+        height: 630,
+        alt: `${siteConfig.name} — ${siteConfig.tagline}`,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
+    title: `${siteConfig.name} | ${siteConfig.tagline}`,
     description: siteConfig.description,
+    images: [`${siteConfig.url}/opengraph-image`],
   },
   robots: {
     index: true,
@@ -53,8 +60,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" className={inter.variable}>
+    <html lang="en-IN" data-scroll-behavior="smooth" className={inter.variable}>
       <body className="bg-background text-foreground flex min-h-screen flex-col antialiased">
+        <AnalyticsScripts />
         <ActionFeedbackProvider>
           <a
             href="#main-content"

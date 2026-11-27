@@ -1,6 +1,7 @@
 import "server-only";
 import { getAdminAuth, getAdminFirestore } from "@/lib/firebase/admin";
 import {
+  admissionOperationsCollection,
   auditLogsCollection,
   institutesCollection,
   loginMappingsCollection,
@@ -13,7 +14,11 @@ import { resolveAuthorizedInstitute } from "@/lib/security/tenant";
 import { generateId, generateStudentCode } from "@/lib/utils/ids";
 import { generateTemporaryPassword } from "@/lib/utils/password";
 import { recordAuditLog } from "./audit.service";
-import { applyWalletDebitInTransaction } from "./wallet.service";
+import {
+  applyWalletDebitInTransaction,
+  InsufficientWalletBalanceError,
+  resolveWalletBuckets,
+} from "./wallet.service";
 import type { AdmitStudentInput, UpdateStudentInput } from "@/lib/validation/student";
 import type { SessionUser } from "@/types/auth";
 import type { StudentRecord } from "@/types/domain";
@@ -100,6 +105,69 @@ export async function getInstituteStudentById(
   return student;
 }
 
+export const CHARGEABLE_PROFILE_FIELDS = [
+  "fullName",
+  "courseName",
+  "batchName",
+  "courseId",
+  "batchId",
+] as const;
+
+/**
+ * Pure helper to detect which configured chargeable profile fields changed.
+ * Non-chargeable fields (phone, address, guardianName, guardianPhone) never trigger a fee.
+ * Exported for unit testing.
+ */
+export function detectChargeableProfileChanges(
+  existing: Pick<
+    StudentRecord,
+    "fullName" | "courseName" | "batchName" | "courseId" | "batchId"
+  >,
+  input: Pick<
+    UpdateStudentInput,
+    "fullName" | "courseName" | "batchName" | "courseId" | "batchId"
+  >
+): Array<{ field: string; before: string | null; after: string | null }> {
+  const changes: Array<{ field: string; before: string | null; after: string | null }> =
+    [];
+  if (existing.fullName.trim() !== input.fullName.trim()) {
+    changes.push({
+      field: "fullName",
+      before: existing.fullName,
+      after: input.fullName.trim(),
+    });
+  }
+  if (existing.courseName.trim() !== input.courseName.trim()) {
+    changes.push({
+      field: "courseName",
+      before: existing.courseName,
+      after: input.courseName.trim(),
+    });
+  }
+  if (existing.batchName.trim() !== input.batchName.trim()) {
+    changes.push({
+      field: "batchName",
+      before: existing.batchName,
+      after: input.batchName.trim(),
+    });
+  }
+  if ((existing.courseId ?? null) !== (input.courseId ?? null)) {
+    changes.push({
+      field: "courseId",
+      before: existing.courseId ?? null,
+      after: input.courseId ?? null,
+    });
+  }
+  if ((existing.batchId ?? null) !== (input.batchId ?? null)) {
+    changes.push({
+      field: "batchId",
+      before: existing.batchId ?? null,
+      after: input.batchId ?? null,
+    });
+  }
+  return changes;
+}
+
 export async function admitStudent(
   actor: SessionUser,
   input: AdmitStudentInput
@@ -109,7 +177,9 @@ export async function admitStudent(
     studentCode: string;
     loginEmail: string;
     temporaryPassword: string;
-  };
+  } | null;
+  walletBalancePaise: number;
+  alreadyProcessed?: boolean;
 }> {
   if (!hasStaffPermission(actor, "students:write")) {
     throw new AuthError(403, "FORBIDDEN", "Missing students:write permission.");
@@ -117,12 +187,42 @@ export async function admitStudent(
 
   const institute = await resolveAuthorizedInstitute(actor);
   const admissionFeePaise = institute.pricing.admissionFeePaise;
+  const wallet = resolveWalletBuckets(institute);
 
-  if (institute.walletBalancePaise < admissionFeePaise) {
-    throw new AuthError(
-      402,
-      "INSUFFICIENT_WALLET_BALANCE",
-      `Insufficient wallet balance. Required ₹${(admissionFeePaise / 100).toFixed(2)}.`
+  const idempotencyKey = input.idempotencyKey?.trim() || generateId("ADM_OP");
+  const opDocId = `${institute.id}_${idempotencyKey}`;
+  const opRef = admissionOperationsCollection().doc(opDocId);
+
+  const existingOpSnap = await opRef.get();
+  const existingOp = existingOpSnap.data();
+  if (existingOpSnap.exists && existingOp) {
+    if (existingOp.status === "completed" && existingOp.studentId) {
+      const existingStudentSnap = await studentsCollection()
+        .doc(existingOp.studentId)
+        .get();
+      const existingStudent = existingStudentSnap.data();
+      if (existingStudent) {
+        return {
+          student: existingStudent,
+          credentials: null,
+          walletBalancePaise: wallet.totalSpendableBalancePaise,
+          alreadyProcessed: true,
+        };
+      }
+    }
+    if (existingOp.status === "pending" || existingOp.status === "auth_created") {
+      throw new AuthError(
+        409,
+        "ADMISSION_IN_PROGRESS",
+        "An admission with this idempotency key is already in progress."
+      );
+    }
+  }
+
+  if (wallet.totalSpendableBalancePaise < admissionFeePaise) {
+    throw new InsufficientWalletBalanceError(
+      admissionFeePaise,
+      wallet.totalSpendableBalancePaise
     );
   }
 
@@ -132,6 +232,23 @@ export async function admitStudent(
   const temporaryPassword = generateTemporaryPassword(10);
   const auth = getAdminAuth();
   const db = getAdminFirestore();
+  const opCreatedAt = new Date().toISOString();
+
+  await opRef.set({
+    id: opDocId,
+    idempotencyKey,
+    instituteId: institute.id,
+    actorUid: actor.uid,
+    studentId,
+    studentCode,
+    authUid: null,
+    email: normalizedEmail,
+    admissionFeePaise,
+    status: "pending",
+    failureReason: null,
+    createdAt: opCreatedAt,
+    updatedAt: opCreatedAt,
+  });
 
   let createdUid: string | null = null;
 
@@ -143,6 +260,12 @@ export async function admitStudent(
       disabled: false,
     });
     createdUid = authUser.uid;
+
+    await opRef.update({
+      authUid: createdUid,
+      status: "auth_created",
+      updatedAt: new Date().toISOString(),
+    });
 
     await auth.setCustomUserClaims(createdUid, {
       role: "student",
@@ -175,7 +298,7 @@ export async function admitStudent(
       updatedAt: now,
     };
 
-    await db.runTransaction(async (tx) => {
+    const debitTx = await db.runTransaction(async (tx) => {
       const instRef = institutesCollection().doc(institute.id);
       const instSnap = await tx.get(instRef);
       const latestInstitute = instSnap.data();
@@ -183,11 +306,13 @@ export async function admitStudent(
         throw new AuthError(423, "INSTITUTE_SUSPENDED", "Institute is not active.");
       }
 
-      applyWalletDebitInTransaction(tx, latestInstitute.walletBalancePaise, {
+      const txRecord = applyWalletDebitInTransaction(tx, latestInstitute, {
         instituteId: institute.id,
         amountPaise: latestInstitute.pricing.admissionFeePaise,
         reason: "student_admission",
+        ledgerType: "admission_debit",
         referenceId: studentId,
+        idempotencyKey: opDocId,
         actorUid: actor.uid,
         note: `Admission fee for ${input.fullName} (${studentCode})`,
       });
@@ -218,6 +343,13 @@ export async function admitStudent(
         createdAt: now,
         updatedAt: now,
       });
+
+      tx.update(opRef, {
+        status: "completed",
+        updatedAt: now,
+      });
+
+      return txRecord;
     });
 
     await recordAuditLog({
@@ -229,6 +361,7 @@ export async function admitStudent(
       metadata: {
         studentCode,
         admissionFeePaise,
+        balanceAfterPaise: debitTx.balanceAfterPaise,
       },
     });
 
@@ -239,11 +372,36 @@ export async function admitStudent(
         loginEmail: normalizedEmail,
         temporaryPassword,
       },
+      walletBalancePaise: debitTx.balanceAfterPaise,
     };
   } catch (error) {
+    let reconciled = false;
     if (createdUid) {
-      await auth.deleteUser(createdUid).catch(() => undefined);
+      await auth
+        .deleteUser(createdUid)
+        .then(() => {
+          reconciled = true;
+        })
+        .catch(() => undefined);
     }
+    const reason = error instanceof Error ? error.message : "Admission failed";
+    await opRef
+      .update({
+        status: reconciled ? "reconciled" : "failed",
+        failureReason: reason,
+        updatedAt: new Date().toISOString(),
+      })
+      .catch(() => undefined);
+
+    await recordAuditLog({
+      action: "STUDENT_ADMISSION_FAILED",
+      actorUid: actor.uid,
+      actorRole: actor.role,
+      instituteId: institute.id,
+      targetId: studentId,
+      metadata: { reason, reconciled },
+    }).catch(() => undefined);
+
     throw error;
   }
 }
@@ -262,6 +420,13 @@ export async function updateStudentProfile(
   const studentRef = studentsCollection().doc(studentId);
   const instRef = institutesCollection().doc(institute.id);
 
+  let chargedPaise = 0;
+  let chargeableChanges: Array<{
+    field: string;
+    before: string | null;
+    after: string | null;
+  }> = [];
+
   const updated = await db.runTransaction(async (tx) => {
     const [studentSnap, instSnap] = await Promise.all([
       tx.get(studentRef),
@@ -277,15 +442,31 @@ export async function updateStudentProfile(
       throw new AuthError(423, "INSTITUTE_SUSPENDED", "Institute is not active.");
     }
 
+    chargeableChanges = detectChargeableProfileChanges(existing, input);
     const feePaise = latestInst.pricing.profileUpdateFeePaise;
-    applyWalletDebitInTransaction(tx, latestInst.walletBalancePaise, {
-      instituteId: institute.id,
-      amountPaise: feePaise,
-      reason: "student_profile_update",
-      referenceId: studentId,
-      actorUid: actor.uid,
-      note: `Profile update fee for ${existing.studentCode}`,
-    });
+
+    if (chargeableChanges.length > 0 && feePaise > 0) {
+      if (input.confirmCharge === false) {
+        throw new AuthError(
+          409,
+          "CHARGE_CONFIRMATION_REQUIRED",
+          `Updating ${chargeableChanges.map((c) => c.field).join(", ")} incurs a ₹${(feePaise / 100).toFixed(2)} fee.`
+        );
+      }
+      chargedPaise = feePaise;
+      applyWalletDebitInTransaction(tx, latestInst, {
+        instituteId: institute.id,
+        amountPaise: feePaise,
+        reason: "student_profile_update",
+        ledgerType: "profile_edit_debit",
+        referenceId: studentId,
+        actorUid: actor.uid,
+        note: `Profile update fee (${chargeableChanges.map((c) => c.field).join(", ")}) for ${existing.studentCode}`,
+        metadata: {
+          changedFields: chargeableChanges.map((c) => c.field).join(","),
+        },
+      });
+    }
 
     const nextRecord: StudentRecord = {
       ...existing,
@@ -310,6 +491,10 @@ export async function updateStudentProfile(
     actorRole: actor.role,
     instituteId: institute.id,
     targetId: studentId,
+    metadata: {
+      chargedPaise,
+      changedFields: chargeableChanges.map((c) => c.field).join(",") || "non_chargeable",
+    },
   });
 
   return updated;

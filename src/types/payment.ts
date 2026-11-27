@@ -67,20 +67,30 @@ export interface WebhookEventRecord {
 }
 
 export type PaymentOrderStatus =
-  "created" | "authorized" | "captured" | "failed" | "refunded";
+  | "created"
+  | "pending"
+  | "authorized"
+  | "captured"
+  | "failed"
+  | "partially_refunded"
+  | "refunded";
 
 export interface PaymentOrderRecord {
   orderId: string;
   internalPaymentId: string;
+  receiptNumber?: string;
+  planId?: string | null;
   environment: GatewayEnvironment;
   instituteId: string;
   actorUid: string;
   amountPaise: number;
+  bonusPaise?: number;
   refundedAmountPaise: number;
   currency: "INR";
   status: PaymentOrderStatus;
   razorpayPaymentId: string | null;
   webhookConfirmed: boolean;
+  bonusGranted?: boolean;
   failureReason: string | null;
   createdAt: string;
   updatedAt: string;

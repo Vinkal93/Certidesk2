@@ -2,8 +2,10 @@ import "server-only";
 import { createHash } from "crypto";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import {
+  institutesCollection,
   paymentGatewayConfigCollection,
   paymentOrdersCollection,
+  walletTransactionsCollection,
   webhookEventsCollection,
 } from "@/lib/firebase/firestore";
 import {
@@ -21,8 +23,17 @@ import {
   getRazorpayClientForEnvironment,
   getRazorpayGatewayConfig,
 } from "./gateway.service";
-import { creditInstituteWalletIdempotent } from "./wallet.service";
+import {
+  computeRefundReconciliation,
+  creditInstituteWalletIdempotent,
+  resolveWalletBuckets,
+} from "./wallet.service";
+import {
+  listRechargePlans,
+  resolveEligibleRechargePlan,
+} from "./recharge-catalog.service";
 import { recordAuditLog } from "./audit.service";
+import { recordSecurityViolationAlert } from "./security-events.service";
 import type { SessionUser } from "@/types/auth";
 import type {
   GatewayEnvironment,
@@ -34,12 +45,15 @@ const GATEWAY_DOC_ID = "razorpay";
 
 export async function createWalletRechargeOrder(
   actor: SessionUser,
-  amountRupees: number
+  input: number | { planId?: string | undefined; amountRupees?: number | undefined }
 ): Promise<{
   orderId: string;
   internalPaymentId: string;
+  receiptNumber: string;
+  planId: string | null;
   environment: GatewayEnvironment;
   amountPaise: number;
+  bonusPaise: number;
   currency: "INR";
   keyId: string;
 }> {
@@ -52,27 +66,53 @@ export async function createWalletRechargeOrder(
   }
 
   const institute = await resolveAuthorizedInstitute(actor);
-  const amountPaise = Math.round(amountRupees * 100);
-  if (!Number.isInteger(amountPaise) || amountPaise < 10000 || amountPaise > 10000000) {
-    throw new AuthError(
-      400,
-      "INVALID_RECHARGE_AMOUNT",
-      "Recharge amount must be between ₹100 and ₹1,00,000."
+
+  let amountPaise: number;
+  let bonusPaise = 0;
+  let resolvedPlanId: string | null = null;
+
+  if (typeof input === "object" && input.planId) {
+    const { plan, effectiveBonusPaise } = await resolveEligibleRechargePlan(
+      input.planId,
+      institute.id
     );
+    amountPaise = plan.amountPaise;
+    bonusPaise = effectiveBonusPaise;
+    resolvedPlanId = plan.id;
+  } else {
+    const amountRupees = typeof input === "number" ? input : Number(input.amountRupees);
+    amountPaise = Math.round(amountRupees * 100);
+    if (!Number.isInteger(amountPaise) || amountPaise < 10000 || amountPaise > 10000000) {
+      throw new AuthError(
+        400,
+        "INVALID_RECHARGE_AMOUNT",
+        "Recharge amount must be between ₹100 and ₹1,00,000."
+      );
+    }
+    const eligiblePlans = await listRechargePlans(false);
+    const matched = eligiblePlans.find((p) => p.amountPaise === amountPaise);
+    if (matched) {
+      const resolved = await resolveEligibleRechargePlan(matched.id, institute.id);
+      bonusPaise = resolved.effectiveBonusPaise;
+      resolvedPlanId = resolved.plan.id;
+    }
   }
 
   const { environment, keyId, client } = await getActiveRazorpayClientForWallet();
   const internalPaymentId = generateId("PAY");
+  const receiptNumber = `RCPT-${internalPaymentId}`;
 
   const rzpOrder = await client.orders.create({
     amount: amountPaise,
     currency: "INR",
-    receipt: internalPaymentId,
+    receipt: receiptNumber,
     notes: {
       instituteId: institute.id,
       actorUid: actor.uid,
       environment,
       internalPaymentId,
+      planId: resolvedPlanId ?? "custom",
+      bonusPaise: String(bonusPaise),
     },
   });
 
@@ -80,15 +120,19 @@ export async function createWalletRechargeOrder(
   await paymentOrdersCollection().doc(rzpOrder.id).set({
     orderId: rzpOrder.id,
     internalPaymentId,
+    receiptNumber,
+    planId: resolvedPlanId,
     environment,
     instituteId: institute.id,
     actorUid: actor.uid,
     amountPaise,
+    bonusPaise,
     refundedAmountPaise: 0,
     currency: "INR",
     status: "created",
     razorpayPaymentId: null,
     webhookConfirmed: false,
+    bonusGranted: false,
     failureReason: null,
     createdAt: now,
     updatedAt: now,
@@ -97,8 +141,11 @@ export async function createWalletRechargeOrder(
   return {
     orderId: rzpOrder.id,
     internalPaymentId,
+    receiptNumber,
+    planId: resolvedPlanId,
     environment,
     amountPaise,
+    bonusPaise,
     currency: "INR",
     keyId,
   };
@@ -187,6 +234,8 @@ export async function verifyAndCreditCheckoutPayment(
   const creditResult = await creditInstituteWalletIdempotent({
     instituteId: institute.id,
     amountPaise: order.amountPaise,
+    bonusPaise: order.bonusPaise ?? 0,
+    planId: order.planId ?? null,
     idempotencyDocId: `RZP_${input.razorpayPaymentId}`,
     reason: "razorpay_recharge",
     referenceId: input.razorpayPaymentId,
@@ -197,6 +246,7 @@ export async function verifyAndCreditCheckoutPayment(
   await orderRef.update({
     status: "captured",
     razorpayPaymentId: input.razorpayPaymentId,
+    bonusGranted: (order.bonusPaise ?? 0) > 0,
     updatedAt: now,
   });
 
@@ -263,6 +313,14 @@ export async function processEnvironmentWebhook(params: {
         receivedAt: now,
         processedAt: null,
       });
+    await recordSecurityViolationAlert({
+      ruleId: "RULE_WEBHOOK_FAILURES",
+      dedupKey: `webhook_sig_${params.environment}`,
+      severity: "high",
+      category: "webhook_signature_failures",
+      title: `Invalid Razorpay ${params.environment.toUpperCase()} webhook signature`,
+      summary: `Rejected incoming Razorpay ${params.environment} webhook due to invalid X-Razorpay-Signature.`,
+    });
     throw new AuthError(401, "INVALID_WEBHOOK_SIGNATURE", "Invalid webhook signature.");
   }
 
@@ -351,11 +409,69 @@ export async function processEnvironmentWebhook(params: {
             "Refund event environment mismatch."
           );
         }
-        const nextRefunded = order.refundedAmountPaise + Number(refund.amount ?? 0);
-        await orderDoc.ref.update({
-          refundedAmountPaise: nextRefunded,
-          status: nextRefunded >= order.amountPaise ? "refunded" : order.status,
-          updatedAt: new Date().toISOString(),
+        const refundAmountPaise = Number(refund.amount ?? 0);
+        const nextRefunded = order.refundedAmountPaise + refundAmountPaise;
+        const nextOrderStatus =
+          nextRefunded >= order.amountPaise ? "refunded" : "partially_refunded";
+
+        // Safe, idempotent wallet reconciliation on refund without negative balances
+        const refundTxId = `REF_${refund.id ?? payment?.id ?? order.orderId}`;
+        await db.runTransaction(async (tx) => {
+          const instRef = institutesCollection().doc(order.instituteId);
+          const refundLedgerRef = walletTransactionsCollection().doc(refundTxId);
+          const [instSnap, refundLedgerSnap] = await Promise.all([
+            tx.get(instRef),
+            tx.get(refundLedgerRef),
+          ]);
+          const instData = instSnap.data();
+          if (instSnap.exists && instData && !refundLedgerSnap.exists) {
+            const buckets = resolveWalletBuckets(instData);
+            const recon = computeRefundReconciliation({
+              paidBalancePaise: buckets.paidBalancePaise,
+              bonusBalancePaise: buckets.bonusBalancePaise,
+              refundPaidPaise: refundAmountPaise,
+              associatedBonusPaise:
+                nextOrderStatus === "refunded" ? (order.bonusPaise ?? 0) : 0,
+            });
+            const ts = new Date().toISOString();
+            tx.update(instRef, {
+              walletBalancePaise: recon.nextTotalBalancePaise,
+              paidBalancePaise: recon.nextPaidBalancePaise,
+              bonusBalancePaise: recon.nextBonusBalancePaise,
+              walletVersion: buckets.version + 1,
+              updatedAt: ts,
+            });
+            tx.set(refundLedgerRef, {
+              id: refundTxId,
+              instituteId: order.instituteId,
+              type: "debit",
+              ledgerType: "refund_credit",
+              bucket: "paid",
+              direction: "debit",
+              amountPaise: recon.paidReversedPaise + recon.bonusReversedPaise,
+              balanceAfterPaise: recon.nextTotalBalancePaise,
+              paidBalanceAfterPaise: recon.nextPaidBalancePaise,
+              bonusBalanceAfterPaise: recon.nextBonusBalancePaise,
+              reason: "payment_refund",
+              source: "razorpay_refund_webhook",
+              referenceId: refund.id ?? order.orderId,
+              idempotencyKey: refundTxId,
+              actorUid: "system",
+              note: `Refund reconciliation for ${order.orderId}`,
+              metadata: {
+                paidReversedPaise: recon.paidReversedPaise,
+                bonusReversedPaise: recon.bonusReversedPaise,
+                unrecoveredPaidShortfallPaise: recon.unrecoveredPaidShortfallPaise,
+                unrecoveredBonusConsumedPaise: recon.unrecoveredBonusConsumedPaise,
+              },
+              createdAt: ts,
+            });
+          }
+          tx.update(orderDoc.ref, {
+            refundedAmountPaise: nextRefunded,
+            status: nextOrderStatus,
+            updatedAt: new Date().toISOString(),
+          });
         });
         await recordAuditLog({
           action: "PAYMENT_REFUNDED",
@@ -437,6 +553,8 @@ export async function processEnvironmentWebhook(params: {
       await creditInstituteWalletIdempotent({
         instituteId: order.instituteId,
         amountPaise: order.amountPaise,
+        bonusPaise: order.bonusPaise ?? 0,
+        planId: order.planId ?? null,
         idempotencyDocId: `RZP_${payment.id}`,
         reason: "razorpay_recharge",
         referenceId: payment.id,
@@ -448,6 +566,7 @@ export async function processEnvironmentWebhook(params: {
         status: "captured",
         razorpayPaymentId: payment.id,
         webhookConfirmed: true,
+        bonusGranted: (order.bonusPaise ?? 0) > 0,
         updatedAt: new Date().toISOString(),
       });
 
@@ -774,4 +893,17 @@ export async function initiateRazorpayPaymentRefund(
       updatedAt: now,
     },
   };
+}
+
+export async function listInstitutePaymentOrders(
+  instituteId: string,
+  limitCount = 25
+): Promise<PaymentOrderRecord[]> {
+  const snap = await paymentOrdersCollection()
+    .where("instituteId", "==", instituteId)
+    .get();
+  return snap.docs
+    .map((d) => d.data())
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, limitCount);
 }

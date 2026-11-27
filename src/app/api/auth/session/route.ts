@@ -29,7 +29,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await establishPortalSession(parsed.data.idToken, parsed.data.portal);
+    const ipAddress =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      null;
+    const userAgent = request.headers.get("user-agent") || null;
+
+    const user = await establishPortalSession(parsed.data.idToken, parsed.data.portal, {
+      ipAddress,
+      userAgent,
+    });
     return jsonOk({ user });
   } catch (error) {
     return handleApiError(error);

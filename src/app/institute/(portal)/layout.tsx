@@ -1,7 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/security/session";
 import { resolveAuthorizedInstitute } from "@/lib/security/tenant";
+import { buildPrivateNoIndexMetadata } from "@/lib/seo/metadata";
 import { InstituteShell } from "@/components/institute/institute-shell";
+
+export const metadata: Metadata = buildPrivateNoIndexMetadata("Institute Portal");
 
 export default async function InstitutePortalLayout({
   children,

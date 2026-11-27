@@ -4,9 +4,14 @@ import { requireSessionUser } from "@/lib/security/session";
 import { createWalletRechargeOrder } from "@/services/payment.service";
 import { handleApiError, jsonError, jsonOk } from "@/lib/utils/api-response";
 
-const createOrderSchema = z.object({
-  amountRupees: z.coerce.number().min(100).max(100000),
-});
+const createOrderSchema = z
+  .object({
+    planId: z.string().min(1).optional(),
+    amountRupees: z.coerce.number().min(100).max(100000).optional(),
+  })
+  .refine((data) => Boolean(data.planId) || data.amountRupees !== undefined, {
+    message: "Select a recharge plan or enter an amount between ₹100 and ₹1,00,000.",
+  });
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,11 +23,15 @@ export async function POST(request: NextRequest) {
       return jsonError(
         400,
         "VALIDATION_ERROR",
-        "Recharge amount must be between ₹100 and ₹1,00,000."
+        parsed.error.issues[0]?.message ??
+          "Select a valid recharge plan or amount between ₹100 and ₹1,00,000."
       );
     }
 
-    const order = await createWalletRechargeOrder(actor, parsed.data.amountRupees);
+    const order = await createWalletRechargeOrder(actor, {
+      planId: parsed.data.planId,
+      amountRupees: parsed.data.amountRupees,
+    });
     return jsonOk(order, 201);
   } catch (error) {
     return handleApiError(error);

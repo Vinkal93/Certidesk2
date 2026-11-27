@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
 import { Mail, Clock, Building2 } from "lucide-react";
 import { siteConfig } from "@/config/site";
+import { buildPublicMetadata } from "@/lib/seo/metadata";
 import { PageContainer, SectionHeader } from "@/components/layout";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { ContactForm } from "@/components/marketing/contact-form";
 
-export const metadata: Metadata = {
-  title: "Contact",
+export const metadata: Metadata = buildPublicMetadata({
+  title: "Contact Sales & Support",
   description:
-    "Reach out to the CertiDesk team to discuss institute onboarding, multi-branch requirements, or product architecture.",
-  alternates: { canonical: "/contact" },
-};
+    "Reach out to the CertiDesk Pro team to discuss institute onboarding, prepaid wallet billing, or multi-branch requirements.",
+  path: "/contact",
+});
 
 export default function ContactPage() {
   return (

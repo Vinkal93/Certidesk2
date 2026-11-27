@@ -16,6 +16,7 @@ export const admitStudentSchema = z.object({
   batchId: z.string().trim().optional(),
   courseName: z.string().trim().min(2, "Course name is required.").max(120),
   batchName: z.string().trim().min(1, "Batch name is required.").max(80),
+  idempotencyKey: z.string().trim().min(4).max(120).optional(),
 });
 
 export const updateStudentSchema = z.object({
@@ -28,6 +29,7 @@ export const updateStudentSchema = z.object({
   batchId: z.string().trim().optional(),
   courseName: z.string().trim().min(2).max(120),
   batchName: z.string().trim().min(1).max(80),
+  confirmCharge: z.boolean().optional(),
 });
 
 export const studentActionSchema = z.discriminatedUnion("action", [
