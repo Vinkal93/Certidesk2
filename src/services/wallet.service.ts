@@ -67,10 +67,20 @@ export function resolveWalletBuckets(
     typeof institute.bonusBalancePaise === "number"
       ? Math.max(0, Math.trunc(institute.bonusBalancePaise))
       : 0;
-  const paidBalancePaise =
+  const legacyTotalPaise = Math.max(0, Math.trunc(institute.walletBalancePaise ?? 0));
+  const rawPaid =
     typeof institute.paidBalancePaise === "number"
       ? Math.max(0, Math.trunc(institute.paidBalancePaise))
-      : Math.max(0, Math.trunc(institute.walletBalancePaise) - bonusBalancePaise);
+      : null;
+
+  // If paidBalancePaise is missing OR drifted below legacy walletBalancePaise
+  // (e.g., from an earlier manual adjustment), reconcile paidBalancePaise upward
+  // to match walletBalancePaise - bonusBalancePaise.
+  const paidBalancePaise =
+    rawPaid === null || rawPaid + bonusBalancePaise < legacyTotalPaise
+      ? Math.max(0, legacyTotalPaise - bonusBalancePaise)
+      : rawPaid;
+
   return {
     paidBalancePaise,
     bonusBalancePaise,
