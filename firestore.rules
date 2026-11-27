@@ -423,6 +423,10 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /encryptedGatewaySecrets/{secretId} {
+      allow read, write: if false;
+    }
+
     // Default deny everything else
     match /{document=**} {
       allow read, write: if false;

@@ -20,6 +20,7 @@ import {
   refundInstituteFee,
 } from "@/services/institute-finance.service";
 import { getStudentReceipts } from "@/services/student-portal.service";
+import { decryptSecretPayload, encryptSecretPayload } from "@/lib/gcp/secret-manager";
 import type { SessionUser } from "@/types/auth";
 
 const instituteAdminUser: SessionUser = {
@@ -160,5 +161,16 @@ describe("Auth, Wallet Reconciliation, Finance & Student Portal", () => {
       const slice = rules.slice(idx, idx + 420);
       expect(slice).toContain("allow write: if false;");
     }
+    const vaultIdx = rules.indexOf("match /encryptedGatewaySecrets/");
+    expect(vaultIdx).toBeGreaterThan(-1);
+    expect(rules.slice(vaultIdx, vaultIdx + 120)).toContain(
+      "allow read, write: if false;"
+    );
+  });
+
+  it("encrypts and decrypts Razorpay secrets cleanly via AES-256-GCM vault fallback", () => {
+    const encrypted = encryptSecretPayload("rzp_test_secret_12345");
+    expect(encrypted.ciphertext).not.toContain("rzp_test_secret_12345");
+    expect(decryptSecretPayload(encrypted)).toBe("rzp_test_secret_12345");
   });
 });
