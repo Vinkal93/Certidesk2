@@ -262,12 +262,42 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   }
 }
 
+import { getSuperAdminImpressionInstituteId } from "./impression";
+
+export async function getInstitutePortalSessionUser(): Promise<SessionUser | null> {
+  const user = await getSessionUser();
+  if (!user) return null;
+  if (user.role === "institute_admin" || user.role === "staff") {
+    return user;
+  }
+  if (user.role === "super_admin") {
+    const impressionId = await getSuperAdminImpressionInstituteId();
+    if (impressionId) {
+      return {
+        ...user,
+        instituteId: impressionId,
+      };
+    }
+  }
+  return null;
+}
+
 export async function requireSessionUser(
   requiredPortal?: PortalType
 ): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user) {
     throw new AuthError(401, "UNAUTHORIZED", "Authentication required.");
+  }
+
+  if (requiredPortal === "institute" && user.role === "super_admin") {
+    const impressionId = await getSuperAdminImpressionInstituteId();
+    if (impressionId) {
+      return {
+        ...user,
+        instituteId: impressionId,
+      };
+    }
   }
 
   if (requiredPortal && !isRoleAllowedInPortal(user.role, requiredPortal)) {

@@ -34,6 +34,7 @@ export default async function SuReportsSecurityPage() {
         <div className="flex gap-2">
           <a
             href="/api/su/reports/export?dataset=security_login_events&range=30d&format=csv"
+            download
             className="border-border bg-background hover:bg-surface inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium"
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
@@ -41,6 +42,7 @@ export default async function SuReportsSecurityPage() {
           </a>
           <a
             href="/api/su/reports/export?dataset=audit_logs&range=30d&format=csv"
+            download
             className="border-border bg-background hover:bg-surface inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium"
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />

@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/security/session";
+import { getInstitutePortalSessionUser } from "@/lib/security/session";
 import { listBatches, listCourses } from "@/services/academic.service";
 import { listOnlineExams, listQuestionBank } from "@/services/online-exam.service";
 import { OnlineExamManagerClient } from "@/features/exams/components/online-exam-manager-client";
 
 export default async function InstituteOnlineExamsPage() {
-  const user = await getSessionUser();
-  if (!user || (user.role !== "institute_admin" && user.role !== "staff")) {
+  const user = await getInstitutePortalSessionUser();
+  if (!user) {
     redirect("/login/institute");
   }
 

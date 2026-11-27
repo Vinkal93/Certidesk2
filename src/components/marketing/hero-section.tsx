@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 
 export function HeroSection() {
   return (
-    <section className="border-border from-surface to-background relative overflow-hidden border-b bg-gradient-to-b py-16 sm:py-20 lg:py-24">
+    <section className="border-border from-surface to-background relative overflow-hidden border-b bg-gradient-to-b py-12 sm:py-16 lg:flex lg:min-h-[calc(100svh-4rem)] lg:min-h-[calc(100vh-4rem)] lg:items-center lg:py-14">
       <Container>
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-10">
           <div className="lg:col-span-6">

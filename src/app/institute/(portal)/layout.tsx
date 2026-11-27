@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/security/session";
+import { getInstitutePortalSessionUser } from "@/lib/security/session";
 import { resolveAuthorizedInstitute } from "@/lib/security/tenant";
 import { buildPrivateNoIndexMetadata } from "@/lib/seo/metadata";
 import { InstituteShell } from "@/components/institute/institute-shell";
@@ -12,8 +12,8 @@ export default async function InstitutePortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getSessionUser();
-  if (!user || (user.role !== "institute_admin" && user.role !== "staff")) {
+  const user = await getInstitutePortalSessionUser();
+  if (!user) {
     redirect("/institute/login");
   }
 

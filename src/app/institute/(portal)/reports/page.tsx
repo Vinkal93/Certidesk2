@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/security/session";
+import { getInstitutePortalSessionUser } from "@/lib/security/session";
 import { hasStaffPermission } from "@/lib/security/permissions";
 import { resolveAuthorizedInstitute } from "@/lib/security/tenant";
+import { feeReceiptsCollection, studentsCollection } from "@/lib/firebase/firestore";
 import { getInstituteDashboardData } from "@/services/institute-dashboard.service";
 import {
   ReportsClient,
+  type InstituteAnalyticsPayload,
   type ReportSummaryRow,
 } from "@/features/institutes/components/reports-client";
 
@@ -15,8 +17,8 @@ export const metadata: Metadata = {
 };
 
 export default async function InstituteReportsPage() {
-  const user = await getSessionUser();
-  if (!user || (user.role !== "institute_admin" && user.role !== "staff")) {
+  const user = await getInstitutePortalSessionUser();
+  if (!user) {
     redirect("/institute/login");
   }
   if (!hasStaffPermission(user, "reports:read")) {
@@ -24,7 +26,45 @@ export default async function InstituteReportsPage() {
   }
 
   const institute = await resolveAuthorizedInstitute(user);
-  const data = await getInstituteDashboardData(institute.id, "all");
+  const [data, receiptsSnap, studentsSnap] = await Promise.all([
+    getInstituteDashboardData(institute.id, "all"),
+    feeReceiptsCollection().where("instituteId", "==", institute.id).get(),
+    studentsCollection().where("instituteId", "==", institute.id).get(),
+  ]);
+
+  const receiptSeries = receiptsSnap.docs
+    .map((d) => d.data())
+    .filter((r) => r.status !== "cancelled")
+    .map((r) => ({
+      date: (r.issuedAt || "").slice(0, 10),
+      amountPaise: r.amountPaise ?? 0,
+    }))
+    .filter((r) => r.date.length === 10);
+
+  const admissionSeries = studentsSnap.docs
+    .map((d) => ({
+      date: (d.data().admissionDate || d.data().createdAt || "").slice(0, 10),
+    }))
+    .filter((a) => a.date.length === 10);
+
+  const analytics: InstituteAnalyticsPayload = {
+    kpis: {
+      totalStudents: data.metrics.totalStudents,
+      activeStudents: data.metrics.activeStudents,
+      totalCourses: data.metrics.totalCourses,
+      activeBatches: data.metrics.activeBatches,
+      feeCollectedPaise: data.metrics.monthlyCollectionPaise,
+      pendingDuesPaise: data.metrics.pendingFeesPaise,
+      attendancePresent: data.attendanceSummary.present,
+      attendanceAbsent: data.attendanceSummary.absent,
+      attendanceLeave: data.attendanceSummary.leave,
+      totalCertificates: data.recentCertificates.length,
+      upcomingExams: data.upcomingExams.length,
+      walletBalancePaise: institute.walletBalancePaise,
+    },
+    receiptSeries,
+    admissionSeries,
+  };
 
   const rows: ReportSummaryRow[] = [
     {
@@ -84,11 +124,11 @@ export default async function InstituteReportsPage() {
           Reports &amp; Analytics
         </h2>
         <p className="text-muted text-sm">
-          Consolidated live reports across students, attendance, fees, exams,
-          certificates, and wallet.
+          Consolidated live reports, date-range filtering, and visual charts across
+          students, attendance, fees, exams, certificates, and wallet.
         </p>
       </div>
-      <ReportsClient rows={rows} />
+      <ReportsClient rows={rows} analytics={analytics} />
     </div>
   );
 }

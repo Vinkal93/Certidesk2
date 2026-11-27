@@ -365,14 +365,16 @@ export async function setInstituteStatus(
 
 export async function resetInstituteAdminAccess(
   actor: SessionUser,
-  instituteId: string
+  instituteId: string,
+  customPassword?: string
 ): Promise<{ instituteCode: string; temporaryPassword: string }> {
   if (actor.role !== "super_admin") {
     throw new AuthError(403, "FORBIDDEN", "Only Super Admin can reset access.");
   }
 
   const existing = await getInstituteById(instituteId);
-  const temporaryPassword = generateTemporaryPassword(12);
+  const temporaryPassword = customPassword?.trim() || generateTemporaryPassword(12);
+  const mustChange = !customPassword?.trim();
   const auth = getAdminAuth();
 
   await auth.updateUser(existing.adminUid, {
@@ -384,13 +386,13 @@ export async function resetInstituteAdminAccess(
     instituteId: existing.id,
     studentId: null,
     permissions: [],
-    mustChangePassword: true,
+    mustChangePassword: mustChange,
   });
   await auth.revokeRefreshTokens(existing.adminUid);
 
   const now = new Date().toISOString();
   await usersCollection().doc(existing.adminUid).update({
-    mustChangePassword: true,
+    mustChangePassword: mustChange,
     disabled: false,
     updatedAt: now,
   });

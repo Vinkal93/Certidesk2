@@ -43,7 +43,10 @@ export const updateInstituteSchema = z.object({
 export const instituteActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("activate") }),
   z.object({ action: z.literal("suspend") }),
-  z.object({ action: z.literal("reset_access") }),
+  z.object({
+    action: z.literal("reset_access"),
+    customPassword: z.string().min(6).max(100).optional(),
+  }),
 ]);
 
 export type CreateInstituteInput = z.infer<typeof createInstituteSchema>;

@@ -18,6 +18,7 @@ import { AuthError, getSessionUser } from "@/lib/security/session";
 import { getInstituteLiveImpression } from "@/services/su-impression.service";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EnterLivePortalButton } from "@/features/super-admin/components/enter-live-portal-button";
 
 export const metadata: Metadata = {
   title: "Live Institute Impression",
@@ -99,6 +100,7 @@ export default async function SuInstituteLiveImpressionPage({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <EnterLivePortalButton instituteId={institute.id} />
           <Link
             href={`/su/institutes/${institute.id}`}
             className="border-border bg-background text-foreground hover:bg-surface inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold"
@@ -108,7 +110,7 @@ export default async function SuInstituteLiveImpressionPage({
           </Link>
           <Link
             href={`/su/institutes/${institute.id}/wallet`}
-            className="bg-primary hover:bg-primary/90 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-white"
+            className="border-border bg-background text-foreground hover:bg-surface inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold"
           >
             <Wallet className="h-3.5 w-3.5" aria-hidden="true" />
             Wallet &amp; Ledger

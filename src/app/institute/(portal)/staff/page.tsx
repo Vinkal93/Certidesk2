@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getSessionUser } from "@/lib/security/session";
+import { getInstitutePortalSessionUser } from "@/lib/security/session";
 import { hasStaffPermission } from "@/lib/security/permissions";
 import { listInstituteStaff } from "@/services/staff.service";
 import { PageContainer } from "@/components/layout";
@@ -16,8 +16,8 @@ export const metadata: Metadata = {
 };
 
 export default async function InstituteStaffPage() {
-  const user = await getSessionUser();
-  if (!user || (user.role !== "institute_admin" && user.role !== "staff")) {
+  const user = await getInstitutePortalSessionUser();
+  if (!user) {
     redirect("/institute/login");
   }
 

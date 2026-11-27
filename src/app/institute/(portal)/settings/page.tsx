@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/security/session";
+import { getInstitutePortalSessionUser } from "@/lib/security/session";
 import { hasStaffPermission } from "@/lib/security/permissions";
 import { getInstituteSettings } from "@/services/institute-ops.service";
 import { SettingsClient } from "@/features/institutes/components/settings-client";
@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default async function InstituteSettingsPage() {
-  const user = await getSessionUser();
-  if (!user || (user.role !== "institute_admin" && user.role !== "staff")) {
+  const user = await getInstitutePortalSessionUser();
+  if (!user) {
     redirect("/institute/login");
   }
   if (!hasStaffPermission(user, "settings:write")) {

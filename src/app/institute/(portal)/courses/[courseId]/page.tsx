@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { AuthError, getSessionUser } from "@/lib/security/session";
+import { AuthError, getInstitutePortalSessionUser } from "@/lib/security/session";
 import { getCourseById } from "@/services/academic.service";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,8 +17,8 @@ export default async function CourseDetailPage({
 }: {
   params: Promise<{ courseId: string }>;
 }) {
-  const user = await getSessionUser();
-  if (!user || (user.role !== "institute_admin" && user.role !== "staff")) {
+  const user = await getInstitutePortalSessionUser();
+  if (!user) {
     redirect("/login/institute");
   }
   const { courseId } = await params;

@@ -6,6 +6,7 @@ import { ConditionalMarketingChrome } from "@/components/layout/conditional-chro
 import { ActionFeedbackProvider } from "@/components/ui/action-feedback-provider";
 import { AnalyticsScripts } from "@/components/analytics/analytics-scripts";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { PwaProvider } from "@/components/pwa/pwa-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -30,7 +31,12 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icon",
     shortcut: "/icon",
-    apple: "/icon",
+    apple: "/pwa-icon/192",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: siteConfig.name,
   },
   openGraph: {
     type: "website",
@@ -82,21 +88,23 @@ export default function RootLayout({
       <body className="bg-background text-foreground flex min-h-screen flex-col antialiased">
         <AnalyticsScripts />
         <ThemeProvider>
-          <ActionFeedbackProvider>
-            <a
-              href="#main-content"
-              className="focus:bg-primary sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
-            >
-              Skip to main content
-            </a>
-            <ConditionalMarketingChrome>
-              <Navbar />
-            </ConditionalMarketingChrome>
-            <div className="flex-1">{children}</div>
-            <ConditionalMarketingChrome>
-              <Footer />
-            </ConditionalMarketingChrome>
-          </ActionFeedbackProvider>
+          <PwaProvider>
+            <ActionFeedbackProvider>
+              <a
+                href="#main-content"
+                className="focus:bg-primary sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+              >
+                Skip to main content
+              </a>
+              <ConditionalMarketingChrome>
+                <Navbar />
+              </ConditionalMarketingChrome>
+              <div className="flex-1">{children}</div>
+              <ConditionalMarketingChrome>
+                <Footer />
+              </ConditionalMarketingChrome>
+            </ActionFeedbackProvider>
+          </PwaProvider>
         </ThemeProvider>
       </body>
     </html>

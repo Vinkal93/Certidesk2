@@ -35,6 +35,7 @@ export default async function SuReportsFinancialPage() {
         <div className="flex gap-2">
           <a
             href="/api/su/reports/export?dataset=wallet_transactions&range=30d&format=csv"
+            download
             className="border-border bg-background hover:bg-surface inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium"
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
@@ -42,6 +43,7 @@ export default async function SuReportsFinancialPage() {
           </a>
           <a
             href="/api/su/reports/export?dataset=payment_orders&range=30d&format=csv"
+            download
             className="border-border bg-background hover:bg-surface inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium"
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />

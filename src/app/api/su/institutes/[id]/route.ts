@@ -75,7 +75,7 @@ export async function POST(
       return jsonOk({ institute });
     }
 
-    const reset = await resetInstituteAdminAccess(actor, id);
+    const reset = await resetInstituteAdminAccess(actor, id, parsed.data.customPassword);
     return jsonOk({ reset });
   } catch (error) {
     return handleApiError(error);

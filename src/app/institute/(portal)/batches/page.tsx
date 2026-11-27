@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/security/session";
+import { getInstitutePortalSessionUser } from "@/lib/security/session";
 import { hasStaffPermission } from "@/lib/security/permissions";
 import { listBatches, listCourses } from "@/services/academic.service";
 import { listInstituteStaff } from "@/services/staff.service";
@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 };
 
 export default async function InstituteBatchesPage() {
-  const user = await getSessionUser();
-  if (!user || (user.role !== "institute_admin" && user.role !== "staff")) {
+  const user = await getInstitutePortalSessionUser();
+  if (!user) {
     redirect("/institute/login");
   }
   if (!hasStaffPermission(user, "batches:read")) {

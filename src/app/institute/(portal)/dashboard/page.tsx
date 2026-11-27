@@ -14,7 +14,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { getSessionUser } from "@/lib/security/session";
+import { getInstitutePortalSessionUser } from "@/lib/security/session";
 import { resolveAuthorizedInstitute } from "@/lib/security/tenant";
 import {
   getInstituteDashboardData,
@@ -41,8 +41,8 @@ export default async function InstituteDashboardPage({
 }: {
   searchParams: Promise<{ range?: string }>;
 }) {
-  const user = await getSessionUser();
-  if (!user || (user.role !== "institute_admin" && user.role !== "staff")) {
+  const user = await getInstitutePortalSessionUser();
+  if (!user) {
     redirect("/institute/login");
   }
 
