@@ -79,6 +79,34 @@ export async function listCourses(actor: SessionUser): Promise<CourseRecord[]> {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+function computeCourseFeeFields(input: CreateCourseInput) {
+  const admissionFeePaise = Math.round((input.admissionFeeRupees ?? 0) * 100);
+  if (
+    typeof input.monthlyFeeRupees === "number" &&
+    typeof input.durationMonths === "number" &&
+    input.durationMonths > 0
+  ) {
+    const monthlyFeePaise = Math.round(input.monthlyFeeRupees * 100);
+    const feePaise = monthlyFeePaise * input.durationMonths + admissionFeePaise;
+    return {
+      durationMonths: input.durationMonths,
+      monthlyFeePaise,
+      admissionFeePaise,
+      feePaise,
+    };
+  }
+  return {
+    ...(typeof input.durationMonths === "number"
+      ? { durationMonths: input.durationMonths }
+      : {}),
+    ...(typeof input.monthlyFeeRupees === "number"
+      ? { monthlyFeePaise: Math.round(input.monthlyFeeRupees * 100) }
+      : {}),
+    ...(admissionFeePaise > 0 ? { admissionFeePaise } : {}),
+    feePaise: Math.round(input.feeRupees * 100),
+  };
+}
+
 export async function createCourse(
   actor: SessionUser,
   input: CreateCourseInput
@@ -89,6 +117,7 @@ export async function createCourse(
   const institute = await resolveAuthorizedInstitute(actor);
   const id = generateId("CRS");
   const now = new Date().toISOString();
+  const feeFields = computeCourseFeeFields(input);
 
   const record: CourseRecord = {
     id,
@@ -96,7 +125,7 @@ export async function createCourse(
     name: input.name,
     code: input.code.toUpperCase(),
     duration: input.duration,
-    feePaise: Math.round(input.feeRupees * 100),
+    ...feeFields,
     description: input.description,
     subjects: input.subjects.sort((a, b) => a.order - b.order),
     status: input.status,
@@ -125,12 +154,14 @@ export async function updateCourse(
     throw new AuthError(404, "COURSE_NOT_FOUND", "Course not found.");
   }
 
+  const feeFields = computeCourseFeeFields(input);
+
   const updated: CourseRecord = {
     ...existing,
     name: input.name,
     code: input.code.toUpperCase(),
     duration: input.duration,
-    feePaise: Math.round(input.feeRupees * 100),
+    ...feeFields,
     description: input.description,
     subjects: input.subjects.sort((a, b) => a.order - b.order),
     status: input.status,

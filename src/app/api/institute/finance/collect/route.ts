@@ -4,15 +4,21 @@ import { requireSessionUser } from "@/lib/security/session";
 import { collectInstituteFee } from "@/services/institute-finance.service";
 import { handleApiError, jsonError, jsonOk } from "@/lib/utils/api-response";
 
-const collectSchema = z.object({
-  feePlanId: z.string().min(1),
-  amountRupees: z.coerce.number().positive(),
-  discountRupees: z.coerce.number().min(0).optional(),
-  method: z.enum(["cash", "upi", "bank_transfer", "card", "razorpay", "other"]),
-  feePeriod: z.string().trim().max(80).optional(),
-  reference: z.string().trim().max(80).optional(),
-  accountId: z.string().trim().optional(),
-});
+const collectSchema = z
+  .object({
+    feePlanId: z.string().min(1).optional(),
+    studentId: z.string().min(1).optional(),
+    totalFeeRupees: z.coerce.number().positive().optional(),
+    amountRupees: z.coerce.number().positive(),
+    discountRupees: z.coerce.number().min(0).optional(),
+    method: z.enum(["cash", "upi", "bank_transfer", "card", "razorpay", "other"]),
+    feePeriod: z.string().trim().max(80).optional(),
+    reference: z.string().trim().max(80).optional(),
+    accountId: z.string().trim().optional(),
+  })
+  .refine((d) => Boolean(d.feePlanId) || Boolean(d.studentId), {
+    message: "Select a student or student fee plan.",
+  });
 
 export async function POST(request: NextRequest) {
   try {

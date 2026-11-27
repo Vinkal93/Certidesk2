@@ -14,24 +14,32 @@ export function HeroSection() {
             <Badge variant="primary" className="mb-5">
               {heroContent.eyebrow}
             </Badge>
-            <h1 className="text-foreground text-4xl font-bold tracking-tight sm:text-5xl lg:leading-[1.12]">
+            <h1 className="text-foreground text-3xl leading-[1.16] font-bold tracking-tight sm:text-5xl lg:leading-[1.12]">
               {heroContent.title}
             </h1>
-            <p className="text-muted mt-5 max-w-xl text-base leading-relaxed sm:text-lg">
+            <p className="text-muted mt-4 max-w-xl text-sm leading-relaxed sm:mt-5 sm:text-lg">
               {heroContent.description}
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3.5">
+            <div className="mt-7 flex flex-col items-stretch gap-3 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3.5">
               <Link
                 href={heroContent.primaryCta.href}
-                className={buttonVariants({ variant: "primary", size: "lg" })}
+                className={buttonVariants({
+                  variant: "primary",
+                  size: "lg",
+                  className: "w-full sm:w-auto",
+                })}
               >
                 {heroContent.primaryCta.label}
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
               <Link
                 href={heroContent.secondaryCta.href}
-                className={buttonVariants({ variant: "outline", size: "lg" })}
+                className={buttonVariants({
+                  variant: "outline",
+                  size: "lg",
+                  className: "w-full sm:w-auto",
+                })}
               >
                 {heroContent.secondaryCta.label}
               </Link>
@@ -69,23 +77,35 @@ export function HeroSection() {
                 <Badge variant="success">System Ready</Badge>
               </div>
 
-              <div className="mt-5 grid grid-cols-3 gap-3">
-                <div className="border-border bg-surface rounded-xl border p-3.5">
-                  <p className="text-muted text-xs font-medium">Active Batches</p>
-                  <p className="text-foreground mt-1 text-xl font-bold">14</p>
-                  <p className="text-primary mt-1 text-[11px] font-medium">4 Programs</p>
+              <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="border-border bg-surface rounded-xl border p-2.5 sm:p-3.5">
+                  <p className="text-muted text-[11px] font-medium sm:text-xs">
+                    Active Batches
+                  </p>
+                  <p className="text-foreground mt-1 text-lg font-bold sm:text-xl">14</p>
+                  <p className="text-primary mt-1 text-[10px] font-medium sm:text-[11px]">
+                    4 Programs
+                  </p>
                 </div>
-                <div className="border-border bg-surface rounded-xl border p-3.5">
-                  <p className="text-muted text-xs font-medium">Attendance</p>
-                  <p className="text-foreground mt-1 text-xl font-bold">94.2%</p>
-                  <p className="text-success mt-1 text-[11px] font-medium">
+                <div className="border-border bg-surface rounded-xl border p-2.5 sm:p-3.5">
+                  <p className="text-muted text-[11px] font-medium sm:text-xs">
+                    Attendance
+                  </p>
+                  <p className="text-foreground mt-1 text-lg font-bold sm:text-xl">
+                    94.2%
+                  </p>
+                  <p className="text-success mt-1 text-[10px] font-medium sm:text-[11px]">
                     Daily Synced
                   </p>
                 </div>
-                <div className="border-border bg-surface rounded-xl border p-3.5">
-                  <p className="text-muted text-xs font-medium">Fee Ledger</p>
-                  <p className="text-foreground mt-1 text-xl font-bold">91.4%</p>
-                  <p className="text-warning mt-1 text-[11px] font-medium">
+                <div className="border-border bg-surface rounded-xl border p-2.5 sm:p-3.5">
+                  <p className="text-muted text-[11px] font-medium sm:text-xs">
+                    Fee Ledger
+                  </p>
+                  <p className="text-foreground mt-1 text-lg font-bold sm:text-xl">
+                    91.4%
+                  </p>
+                  <p className="text-warning mt-1 text-[10px] font-medium sm:text-[11px]">
                     8 Dues Pending
                   </p>
                 </div>

@@ -21,6 +21,17 @@
   --color-danger-soft: #fef2f2;
   --color-surface-elevated: #ffffff;
 
+  /* shadcn/ui semantic base tokens */
+  --color-card: #ffffff;
+  --color-card-foreground: #111827;
+  --color-muted-foreground: #6b7280;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f3f4f6;
+  --color-secondary-foreground: #111827;
+  --color-destructive: #dc2626;
+  --color-ring: #0052ff;
+  --color-input: #e5e7eb;
+
   /* Typography */
   --font-sans:
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
@@ -118,15 +129,15 @@
   --color-danger-soft: var(--color-danger-soft);
 
   /* shadcn/ui semantic tokens */
-  --color-card: #ffffff;
-  --color-card-foreground: #111827;
-  --color-muted-foreground: #6b7280;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f3f4f6;
-  --color-secondary-foreground: #111827;
-  --color-destructive: #dc2626;
-  --color-ring: #0052ff;
-  --color-input: #e5e7eb;
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+  --color-muted-foreground: var(--color-muted-foreground);
+  --color-primary-foreground: var(--color-primary-foreground);
+  --color-secondary: var(--color-secondary);
+  --color-secondary-foreground: var(--color-secondary-foreground);
+  --color-destructive: var(--color-destructive);
+  --color-ring: var(--color-ring);
+  --color-input: var(--color-input);
   --color-chart-1: #0052ff;
   --color-chart-2: #059669;
   --color-chart-3: #0284c7;

@@ -63,6 +63,8 @@ import { suNavGroups, suRouteTitles, type SuNavIcon } from "@/config/su-nav";
 import { getClientAuth, isFirebaseClientConfigured } from "@/lib/firebase/client";
 import { Logo } from "@/components/layout/logo";
 import { SidebarMenu, type SidebarMenuGroup } from "@/components/portal/sidebar-menu";
+import { SignOutConfirmModal } from "@/components/portal/sign-out-confirm-modal";
+import { ManageDevicesModal } from "@/components/portal/manage-devices-modal";
 import { Badge } from "@/components/ui/badge";
 import { IconButton } from "@/components/ui/icon-button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -217,12 +219,13 @@ export function SuShell({
       if (isFirebaseClientConfigured()) {
         await signOut(getClientAuth()).catch(() => undefined);
       }
-      router.replace("/su");
-      router.refresh();
+      window.location.assign("/");
     } finally {
       setLoggingOut(false);
     }
   };
+  const [devicesOpen, setDevicesOpen] = React.useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = React.useState(false);
 
   const searchTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -657,11 +660,24 @@ export function SuShell({
                     >
                       <span>Security &amp; Sessions</span>
                     </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        setDevicesOpen(true);
+                      }}
+                      className="text-foreground hover:bg-surface flex w-full cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 text-left transition"
+                    >
+                      <span>Manage Devices</span>
+                    </button>
                     <div className="border-border my-1 border-t" />
                     <button
                       type="button"
                       disabled={loggingOut}
-                      onClick={handleLogout}
+                      onClick={() => {
+                        setProfileOpen(false);
+                        setLogoutConfirmOpen(true);
+                      }}
                       className="text-danger hover:bg-danger-soft flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left font-medium transition"
                     >
                       <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
@@ -681,6 +697,14 @@ export function SuShell({
           {children}
         </main>
       </div>
+
+      <SignOutConfirmModal
+        open={logoutConfirmOpen}
+        loading={loggingOut}
+        onCancel={() => setLogoutConfirmOpen(false)}
+        onConfirm={() => void handleLogout()}
+      />
+      <ManageDevicesModal open={devicesOpen} onClose={() => setDevicesOpen(false)} />
     </div>
   );
 }

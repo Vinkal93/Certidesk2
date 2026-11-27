@@ -61,13 +61,13 @@ export function ModuleSpotlightSection({
                 {spotlight.previewRows.map((row) => (
                   <div
                     key={row.label}
-                    className="border-border/80 bg-surface/60 flex items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5"
+                    className="border-border/80 bg-surface/60 flex flex-wrap items-center justify-between gap-2.5 rounded-lg border px-3.5 py-2.5 sm:flex-nowrap sm:gap-3"
                   >
-                    <div className="min-w-0">
-                      <p className="text-foreground truncate text-sm font-medium">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-foreground text-sm leading-snug font-medium">
                         {row.label}
                       </p>
-                      <p className="text-muted truncate text-xs">{row.meta}</p>
+                      <p className="text-muted mt-0.5 text-xs leading-snug">{row.meta}</p>
                     </div>
                     <Badge variant={row.tone}>{row.status}</Badge>
                   </div>

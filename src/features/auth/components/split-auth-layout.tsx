@@ -11,8 +11,8 @@ export function SplitAuthLayout({ children }: SplitAuthLayoutProps) {
   return (
     <div className="bg-background min-h-[calc(100vh-4rem)] px-3 py-4 sm:px-6 sm:py-8">
       <div className="mx-auto grid min-h-[640px] max-w-6xl grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
-        {/* Left Sidebar Portrait Card */}
-        <div className="relative min-h-[340px] overflow-hidden rounded-3xl bg-slate-950 shadow-xl lg:col-span-5 lg:min-h-[640px]">
+        {/* Left Sidebar Portrait Card (shown below form on mobile) */}
+        <div className="relative order-2 min-h-[340px] overflow-hidden rounded-3xl bg-slate-950 shadow-xl lg:order-1 lg:col-span-5 lg:min-h-[640px]">
           <Image
             src="/images/founder-login.jpg"
             alt="Vinkal Prajapati — Founder, CertiDesk Pro"
@@ -57,8 +57,8 @@ export function SplitAuthLayout({ children }: SplitAuthLayoutProps) {
           </div>
         </div>
 
-        {/* Right Form / Portal Selection Column */}
-        <div className="flex flex-col justify-center px-1 py-2 sm:px-4 lg:col-span-7 lg:px-8">
+        {/* Right Form / Portal Selection Column (shown first on mobile) */}
+        <div className="order-1 flex flex-col justify-center px-1 py-2 sm:px-4 lg:order-2 lg:col-span-7 lg:px-8">
           <div className="mx-auto w-full max-w-md">{children}</div>
         </div>
       </div>

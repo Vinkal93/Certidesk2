@@ -17,9 +17,9 @@ import {
 } from "@/lib/security/permissions";
 import {
   AuthError,
+  clearSessionCookie,
   createAndSetSessionCookie,
   isAllowlistedSuperAdminEmail,
-  revokeSessionAndClearCookie,
 } from "@/lib/security/session";
 import { recordAuditLog } from "./audit.service";
 import { recordLoginEvent } from "./security-events.service";
@@ -434,7 +434,7 @@ export async function establishPortalSession(
 }
 
 export async function terminatePortalSession(user: SessionUser | null): Promise<void> {
-  await revokeSessionAndClearCookie(user?.uid);
+  await clearSessionCookie();
   if (user) {
     await recordAuditLog({
       action: "AUTH_LOGOUT",

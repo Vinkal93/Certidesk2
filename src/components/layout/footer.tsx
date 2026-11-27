@@ -56,11 +56,11 @@ export function Footer() {
 
         <Separator className="my-10" />
 
-        <div className="text-muted flex flex-col items-start justify-between gap-4 text-xs sm:flex-row sm:items-center">
+        <div className="text-muted flex flex-col items-center justify-center gap-4 text-center text-xs sm:flex-row sm:items-center sm:justify-between sm:text-left">
           <p>
             &copy; {currentYear} {siteConfig.name}. All rights reserved.
           </p>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 sm:justify-end">
             <Link href="/legal" className="hover:text-foreground">
               Legal Center
             </Link>
@@ -87,7 +87,7 @@ export function Footer() {
           aria-hidden="true"
           className="pointer-events-none mt-10 flex w-full items-center justify-center overflow-hidden select-none sm:mt-12"
         >
-          <p className="from-foreground/12 via-primary/20 to-foreground/10 bg-gradient-to-r bg-clip-text text-center text-[clamp(3.25rem,13vw,10.5rem)] leading-[0.88] font-extrabold tracking-tight text-transparent">
+          <p className="from-foreground/12 via-primary/20 to-foreground/10 bg-gradient-to-r bg-clip-text text-center text-[clamp(2rem,11.5vw,10.5rem)] leading-[0.9] font-extrabold tracking-tight whitespace-nowrap text-transparent">
             CertiDesk Pro
           </p>
         </div>

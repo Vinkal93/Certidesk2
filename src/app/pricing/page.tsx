@@ -10,6 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { PricingSection } from "@/components/marketing/pricing-section";
+import { listPublicSubscriptionPlans } from "@/services/su-platform.service";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = buildPublicMetadata({
   title: "Pricing & Prepaid Wallet",
@@ -45,7 +48,8 @@ const rechargeTiers = [
   },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const publicPlans = await listPublicSubscriptionPlans();
   return (
     <PageContainer>
       <JsonLd
@@ -130,7 +134,7 @@ export default function PricingPage() {
         </Container>
       </Section>
 
-      <PricingSection />
+      <PricingSection plans={publicPlans} />
     </PageContainer>
   );
 }

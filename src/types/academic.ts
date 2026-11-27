@@ -18,6 +18,8 @@ export interface CourseRecord {
   code: string;
   category?: string;
   duration: string;
+  durationMonths?: number;
+  monthlyFeePaise?: number;
   feePaise: number;
   admissionFeePaise?: number;
   certificateEligible?: boolean;
@@ -97,6 +99,10 @@ export interface StudentFeePlanRecord {
   studentName: string;
   courseName: string;
   totalFeePaise: number;
+  monthlyFeePaise?: number;
+  durationMonths?: number;
+  admissionFeePaise?: number;
+  startDate?: string;
   discountPaise: number;
   paidPaise: number;
   pendingPaise: number;

@@ -304,6 +304,24 @@ export async function listSubscriptionPlans(actor: SessionUser) {
   return snap.docs.map((d) => d.data());
 }
 
+/**
+ * Public read-only loader for active Super Admin subscription plans.
+ * Safely returns [] if Firestore is unconfigured or has no active plans.
+ */
+export async function listPublicSubscriptionPlans(): Promise<SubscriptionPlanRecord[]> {
+  try {
+    const col = getAdminFirestore().collection(
+      "subscription_plans"
+    ) as CollectionReference<SubscriptionPlanRecord>;
+    const snap = await col.where("active", "==", true).get();
+    return snap.docs
+      .map((d) => d.data())
+      .sort((a, b) => a.monthlyDisplayRupees - b.monthlyDisplayRupees);
+  } catch {
+    return [];
+  }
+}
+
 export async function createSubscriptionPlan(
   actor: SessionUser,
   input: Omit<SubscriptionPlanRecord, "id" | "createdAt" | "updatedAt">

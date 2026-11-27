@@ -12,8 +12,34 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 
-export function PricingSection() {
+import type { SubscriptionPlanRecord } from "@/services/su-platform.service";
+
+export function PricingSection({ plans }: { plans?: SubscriptionPlanRecord[] }) {
   const [annualBilling, setAnnualBilling] = React.useState(true);
+
+  const displayTiers = React.useMemo(() => {
+    if (plans && plans.length > 0) {
+      return plans.map((plan, idx) => ({
+        name: plan.name,
+        description: plan.description,
+        monthlyPrice: `₹${plan.monthlyDisplayRupees.toLocaleString("en-IN")}`,
+        annualPrice: `₹${plan.yearlyDisplayRupees.toLocaleString("en-IN")}`,
+        priceSuffix: annualBilling ? "/ year" : "/ month",
+        highlighted: plans.length >= 3 ? idx === 1 : idx === 0,
+        badge: idx === 1 ? "Popular" : undefined,
+        ctaLabel: "Register Institute",
+        ctaHref: "/register",
+        features: [
+          `Up to ${plan.maxStudents.toLocaleString("en-IN")} active students`,
+          `Up to ${plan.maxStaff.toLocaleString("en-IN")} staff accounts`,
+          `${plan.storageLimitMb >= 1024 ? `${(plan.storageLimitMb / 1024).toFixed(1)} GB` : `${plan.storageLimitMb} MB`} document storage`,
+          "QR-verifiable certificates & marksheets",
+          "Dedicated Institute & Student portals",
+        ],
+      }));
+    }
+    return pricingTiers;
+  }, [plans, annualBilling]);
 
   return (
     <Section id="pricing" spacing="md" background="surface">
@@ -50,7 +76,7 @@ export function PricingSection() {
         </div>
 
         <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {pricingTiers.map((tier) => {
+          {displayTiers.map((tier) => {
             const price = annualBilling ? tier.annualPrice : tier.monthlyPrice;
             return (
               <div

@@ -550,13 +550,14 @@ describe("CertiDesk Pro — 17 Security & Operational Scenarios", () => {
     expect(session).toBeNull();
   });
 
-  it("17. Logout invalidates session", async () => {
+  it("17. Logout invalidates current device session without revoking other devices", async () => {
     const user = await establishPortalSession("token:inst_a_admin", "institute");
     expect(await getSessionUser()).not.toBeNull();
 
     await terminatePortalSession(user);
     expect(cookieJar.has("cd_session")).toBe(false);
-    expect(revokedUids.has("inst_a_admin")).toBe(true);
+    expect(cookieJar.has("cd_sid")).toBe(false);
+    expect(revokedUids.has("inst_a_admin")).toBe(false);
     expect(await getSessionUser()).toBeNull();
   });
 

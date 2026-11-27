@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +43,14 @@ export function SidebarMenu({
   onNavigate,
   isItemActive,
 }: SidebarMenuProps) {
+  const router = useRouter();
   const [toggled, setToggled] = React.useState<Record<string, boolean>>({});
+  const [pendingState, setPendingState] = React.useState<{
+    href: string;
+    fromPath: string;
+  } | null>(null);
+  const pendingHref =
+    pendingState && pendingState.fromPath === pathname ? pendingState.href : null;
   const showExpanded = !collapsed || isMobile;
 
   const toggleGroup = (title: string, currentlyOpen: boolean) => {
@@ -108,13 +116,18 @@ export function SidebarMenu({
               >
                 {group.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive = isItemActive(item.href, pathname);
+                  const isActive = pendingHref
+                    ? item.href === pendingHref
+                    : isItemActive(item.href, pathname);
 
                   return (
                     <li key={item.href}>
                       <Link
                         href={item.href}
+                        prefetch={true}
+                        onMouseEnter={() => router.prefetch(item.href)}
                         onClick={() => {
+                          setPendingState({ href: item.href, fromPath: pathname });
                           if (isMobile && onNavigate) {
                             onNavigate();
                           }

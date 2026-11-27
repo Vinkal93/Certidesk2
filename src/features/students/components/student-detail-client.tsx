@@ -2,8 +2,18 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, KeyRound, ShieldAlert } from "lucide-react";
+import {
+  AlertCircle,
+  Bell,
+  CheckCircle2,
+  KeyRound,
+  Send,
+  ShieldAlert,
+  Trash2,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +37,13 @@ export function StudentDetailClient({
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [resetPass, setResetPass] = React.useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [msgCategory, setMsgCategory] = React.useState<
+    "announcement" | "fee_reminder" | "exam_notice" | "urgent"
+  >("announcement");
+  const [msgTitle, setMsgTitle] = React.useState("");
+  const [msgBody, setMsgBody] = React.useState("");
+  const [sendingMsg, setSendingMsg] = React.useState(false);
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -93,25 +110,80 @@ export function StudentDetailClient({
     }
   };
 
+  const handleDelete = async () => {
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/institute/students/${student.id}`, {
+        method: "DELETE",
+      });
+      const json = (await res.json()) as {
+        ok: boolean;
+        error?: { message?: string };
+      };
+      if (!res.ok || !json.ok) {
+        setError(json.error?.message ?? "Failed to delete student.");
+        return;
+      }
+      router.replace("/institute/students");
+      router.refresh();
+    } finally {
+      setLoading(false);
+      setConfirmDelete(false);
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSendingMsg(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/institute/students/${student.id}/message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: msgCategory,
+          title: msgTitle,
+          message: msgBody,
+        }),
+      });
+      const json = (await res.json()) as {
+        ok: boolean;
+        error?: { message?: string };
+      };
+      if (!res.ok || !json.ok) {
+        setError(json.error?.message ?? "Failed to send message.");
+        return;
+      }
+      setMsgTitle("");
+      setMsgBody("");
+      setMessage("Popup & notification message sent to student portal.");
+    } finally {
+      setSendingMsg(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {error && (
         <div
           role="alert"
-          className="bg-danger-soft text-danger flex items-start gap-2 rounded-lg border border-red-200 p-3.5 text-sm"
+          className="bg-danger-soft text-danger flex items-start gap-2 rounded-lg border border-red-200 p-3.5 text-sm dark:border-red-800/60"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>
         </div>
       )}
       {message && (
-        <div className="bg-success-soft text-success flex items-start gap-2 rounded-lg border border-emerald-200 p-3.5 text-sm">
+        <div className="bg-success-soft text-success flex items-start gap-2 rounded-lg border border-emerald-200 p-3.5 text-sm dark:border-emerald-800/60">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{message}</span>
         </div>
       )}
       {resetPass && (
-        <div className="bg-warning-soft rounded-xl border border-amber-200 p-4 font-mono text-sm">
+        <div className="bg-warning-soft rounded-xl border border-amber-200 p-4 font-mono text-sm dark:border-amber-800/60">
           New Temporary Password:{" "}
           <span className="text-foreground font-bold">{resetPass}</span>
         </div>
@@ -202,10 +274,98 @@ export function StudentDetailClient({
               >
                 Reset Student Password
               </Button>
+              {!confirmDelete ? (
+                <Button
+                  variant="outline"
+                  loading={loading}
+                  leftIcon={<Trash2 className="text-danger h-4 w-4" aria-hidden="true" />}
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  Delete Student Permanently
+                </Button>
+              ) : (
+                <div className="bg-danger-soft space-y-2 rounded-xl border border-red-200 p-3 dark:border-red-800/60">
+                  <p className="text-danger text-xs font-semibold">
+                    Confirm deleting {student.fullName} ({student.studentCode})?
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      loading={loading}
+                      onClick={() => void handleDelete()}
+                    >
+                      Yes, Delete
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setConfirmDelete(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="text-primary h-4 w-4" aria-hidden="true" />
+            Send Custom Popup &amp; Notification to {student.fullName}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSendMessage} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Select
+                label="Message Category"
+                value={msgCategory}
+                onChange={(e) =>
+                  setMsgCategory(
+                    e.target.value as
+                      "announcement" | "fee_reminder" | "exam_notice" | "urgent"
+                  )
+                }
+                options={[
+                  { label: "Announcement", value: "announcement" },
+                  { label: "Fee Reminder", value: "fee_reminder" },
+                  { label: "Exam Notice", value: "exam_notice" },
+                  { label: "Urgent Alert", value: "urgent" },
+                ]}
+              />
+              <div className="sm:col-span-2">
+                <Input
+                  label="Popup / Notification Title"
+                  placeholder="e.g. Monthly Fee Reminder or Document Verification"
+                  value={msgTitle}
+                  onChange={(e) => setMsgTitle(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <Textarea
+              label="Message Content"
+              rows={3}
+              placeholder="Write the message to display as a popup & notification in the student portal..."
+              value={msgBody}
+              onChange={(e) => setMsgBody(e.target.value)}
+              required
+            />
+            <Button
+              type="submit"
+              loading={sendingMsg}
+              leftIcon={<Send className="h-4 w-4" aria-hidden="true" />}
+            >
+              Send Popup &amp; Notification
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
