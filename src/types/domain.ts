@@ -2,11 +2,22 @@ import type { StaffPermission, UserRole } from "./auth";
 
 export type InstituteStatus = "active" | "suspended";
 export type StudentStatus = "active" | "disabled";
+export type OnboardingStatus = "registered" | "verified" | "wallet_skipped" | "completed";
+export type SpendOrderPolicy = "bonus_first" | "paid_first";
 
 export interface InstitutePricingConfig {
   admissionFeePaise: number;
   profileUpdateFeePaise: number;
   certificateFeePaise: number;
+}
+
+export interface InstituteWalletSummary {
+  paidBalancePaise: number;
+  bonusBalancePaise: number;
+  totalSpendableBalancePaise: number;
+  currency: "INR";
+  version: number;
+  updatedAt: string;
 }
 
 export interface InstituteRecord {
@@ -19,7 +30,13 @@ export interface InstituteRecord {
   address: string;
   adminUid: string;
   status: InstituteStatus;
+  onboardingStatus?: OnboardingStatus;
+  emailVerified?: boolean;
+  mobileVerified?: boolean;
   walletBalancePaise: number;
+  paidBalancePaise?: number;
+  bonusBalancePaise?: number;
+  walletVersion?: number;
   pricing: InstitutePricingConfig;
   createdAt: string;
   updatedAt: string;
@@ -74,24 +91,99 @@ export interface StudentRecord {
 }
 
 export type WalletTransactionType = "credit" | "debit";
+export type WalletLedgerBucket = "paid" | "bonus";
+export type WalletLedgerType =
+  | "recharge_credit"
+  | "promotional_bonus"
+  | "admission_debit"
+  | "profile_edit_debit"
+  | "administrative_credit"
+  | "administrative_debit"
+  | "refund_credit"
+  | "promotional_expiry";
+
 export type WalletTransactionReason =
   | "initial_balance"
   | "razorpay_recharge"
+  | "promotional_bonus"
   | "student_admission"
   | "student_profile_update"
-  | "manual_adjustment";
+  | "manual_adjustment"
+  | "payment_refund"
+  | "promotional_expiry";
 
 export interface WalletTransactionRecord {
   id: string;
   instituteId: string;
   type: WalletTransactionType;
+  ledgerType?: WalletLedgerType;
+  bucket?: WalletLedgerBucket;
+  direction?: WalletTransactionType;
   amountPaise: number;
   balanceAfterPaise: number;
+  paidBalanceAfterPaise?: number;
+  bonusBalanceAfterPaise?: number;
   reason: WalletTransactionReason;
+  source?: string;
   referenceId: string;
+  idempotencyKey?: string;
   actorUid: string;
   note: string;
+  metadata?: Record<string, string | number | boolean | null>;
   createdAt: string;
+}
+
+export interface RechargePlanRecord {
+  id: string;
+  title: string;
+  description: string;
+  amountPaise: number;
+  bonusPaise: number;
+  currency: "INR";
+  enabled: boolean;
+  displayOrder: number;
+  promoEligible: boolean;
+  promoLabel: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  bonusExpiryDays: number | null;
+  maxUsesPerInstitute: number | null;
+  createdAt: string;
+  updatedAt: string;
+  updatedByUid: string;
+}
+
+export interface WalletBonusGrantRecord {
+  id: string;
+  instituteId: string;
+  paymentId: string;
+  orderId: string;
+  planId: string;
+  grantedPaise: number;
+  remainingPaise: number;
+  expiresAt: string | null;
+  expired: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AdmissionOperationStatus =
+  "pending" | "auth_created" | "completed" | "failed" | "reconciled";
+
+export interface AdmissionOperationRecord {
+  id: string;
+  idempotencyKey: string;
+  instituteId: string;
+  actorUid: string;
+  studentId: string | null;
+  studentCode: string | null;
+  authUid: string | null;
+  email: string;
+  admissionFeePaise: number;
+  status: AdmissionOperationStatus;
+  failureReason: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type AuditAction =
@@ -100,16 +192,23 @@ export type AuditAction =
   | "AUTH_LOGOUT"
   | "PASSWORD_CHANGED"
   | "INSTITUTE_CREATED"
+  | "INSTITUTE_SELF_REGISTERED"
+  | "INSTITUTE_ONBOARDING_UPDATED"
   | "INSTITUTE_UPDATED"
   | "INSTITUTE_SUSPENDED"
   | "INSTITUTE_ACTIVATED"
   | "INSTITUTE_ACCESS_RESET"
+  | "RECHARGE_PLAN_UPDATED"
+  | "PRICING_UPDATED"
   | "STUDENT_ADMITTED"
+  | "STUDENT_ADMISSION_FAILED"
   | "STUDENT_UPDATED"
   | "STUDENT_STATUS_CHANGED"
   | "STUDENT_ACCESS_RESET"
   | "WALLET_CREDITED"
+  | "WALLET_BONUS_CREDITED"
   | "WALLET_DEBITED"
+  | "WALLET_RECONCILED"
   | "GATEWAY_CONFIGURED"
   | "GATEWAY_CONNECTION_TESTED"
   | "GATEWAY_WEBHOOK_SECRET_SAVED"

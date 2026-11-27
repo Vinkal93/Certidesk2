@@ -1,12 +1,14 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { AuthError } from "@/lib/security/session";
+import { InsufficientWalletBalanceError } from "@/services/wallet.service";
 
 export interface ApiErrorBody {
   ok: false;
   error: {
     code: string;
     message: string;
+    details?: Record<string, number | string>;
   };
 }
 
@@ -34,6 +36,23 @@ export function jsonError(
 }
 
 export function handleApiError(error: unknown): NextResponse<ApiErrorBody> {
+  if (error instanceof InsufficientWalletBalanceError) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: {
+          code: error.code,
+          message: error.message,
+          details: {
+            requiredPaise: error.requiredPaise,
+            availablePaise: error.availablePaise,
+            shortfallPaise: error.shortfallPaise,
+          },
+        },
+      },
+      { status: error.status }
+    );
+  }
   if (error instanceof AuthError) {
     return jsonError(error.status, error.code, error.message);
   }

@@ -5,7 +5,13 @@ import { ArrowLeft } from "lucide-react";
 import { getSessionUser } from "@/lib/security/session";
 import { hasStaffPermission } from "@/lib/security/permissions";
 import { resolveAuthorizedInstitute } from "@/lib/security/tenant";
-import { listInstituteWalletTransactions } from "@/services/wallet.service";
+import {
+  computeInstituteWalletTotals,
+  listInstituteWalletTransactions,
+  resolveWalletBuckets,
+} from "@/services/wallet.service";
+import { listRechargePlans } from "@/services/recharge-catalog.service";
+import { listInstitutePaymentOrders } from "@/services/payment.service";
 import { PageContainer } from "@/components/layout";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
@@ -27,7 +33,14 @@ export default async function InstituteWalletPage() {
   }
 
   const institute = await resolveAuthorizedInstitute(user);
-  const transactions = await listInstituteWalletTransactions(institute.id);
+  const [transactions, plans, orders] = await Promise.all([
+    listInstituteWalletTransactions(institute.id, 50),
+    listRechargePlans(false),
+    listInstitutePaymentOrders(institute.id, 15),
+  ]);
+
+  const wallet = resolveWalletBuckets(institute);
+  const totals = computeInstituteWalletTotals(transactions);
 
   return (
     <PageContainer>
@@ -48,8 +61,12 @@ export default async function InstituteWalletPage() {
 
           <WalletClient
             instituteName={institute.name}
-            initialBalancePaise={institute.walletBalancePaise}
+            initialWallet={wallet}
+            initialTotals={totals}
             initialTransactions={transactions}
+            initialOrders={orders}
+            rechargePlans={plans}
+            admissionFeePaise={institute.pricing.admissionFeePaise}
             canRecharge={user.role === "institute_admin"}
           />
         </Container>

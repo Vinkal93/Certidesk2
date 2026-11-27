@@ -73,14 +73,36 @@ export function AdmitStudentForm({
               };
             };
           }
-        | { ok: false; error?: { message?: string } };
+        | {
+            ok: false;
+            error?: {
+              code?: string;
+              message?: string;
+              details?: {
+                requiredPaise?: number;
+                availablePaise?: number;
+                shortfallPaise?: number;
+              };
+            };
+          };
 
       if (!res.ok || !json.ok) {
-        setError(
-          !json.ok
-            ? (json.error?.message ?? "Failed to admit student.")
-            : "Failed to admit student."
-        );
+        if (
+          !json.ok &&
+          json.error?.code === "INSUFFICIENT_WALLET_BALANCE" &&
+          json.error.details
+        ) {
+          const d = json.error.details;
+          setError(
+            `Insufficient wallet balance. Required ₹${((d.requiredPaise ?? 0) / 100).toFixed(2)}, Available ₹${((d.availablePaise ?? 0) / 100).toFixed(2)}, Shortfall ₹${((d.shortfallPaise ?? 0) / 100).toFixed(2)}. Please recharge your wallet.`
+          );
+        } else {
+          setError(
+            !json.ok
+              ? (json.error?.message ?? "Failed to admit student.")
+              : "Failed to admit student."
+          );
+        }
         return;
       }
 

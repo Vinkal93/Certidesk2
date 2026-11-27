@@ -75,6 +75,7 @@ export const suNavGroups: SuNavGroup[] = [
   {
     title: "PLANS & BILLING",
     items: [
+      { label: "Recharge & Promotions", href: "/su/recharge-plans", icon: "tag" },
       { label: "Plan Management", href: "/su/plans", icon: "layers" },
       { label: "Subscriptions", href: "/su/subscriptions", icon: "repeat" },
       { label: "Feature Entitlements", href: "/su/entitlements", icon: "sliders" },
@@ -93,6 +94,7 @@ export const suNavGroups: SuNavGroup[] = [
         icon: "arrowLeftRight",
       },
       { label: "Refund Management", href: "/su/refunds", icon: "rotateCcw" },
+      { label: "Reconciliation", href: "/su/reconciliation", icon: "fileBarChart" },
       { label: "Revenue Reports", href: "/su/reports/financial", icon: "trendingUp" },
     ],
   },
@@ -210,6 +212,8 @@ export const suRouteTitles: Record<string, string> = {
   "/su/students": "Global Student Directory",
   "/su/staff": "Global Staff Directory",
   "/su/plans": "Plan Management",
+  "/su/recharge-plans": "Recharge & Promotions",
+  "/su/reconciliation": "Payment Reconciliation",
   "/su/subscriptions": "Subscriptions",
   "/su/entitlements": "Feature Entitlements",
   "/su/pricing": "Pricing & Charges",

@@ -22,6 +22,7 @@ import {
   revokeSessionAndClearCookie,
 } from "@/lib/security/session";
 import { recordAuditLog } from "./audit.service";
+import { recordLoginEvent } from "./security-events.service";
 import type { PortalType, SessionUser } from "@/types/auth";
 
 export async function resolvePortalLoginIdentifier(
@@ -60,9 +61,19 @@ export async function resolvePortalLoginIdentifier(
 
 export async function establishPortalSession(
   idToken: string,
-  portal: PortalType
+  portal: PortalType,
+  requestMeta?: { ipAddress?: string | null; userAgent?: string | null }
 ): Promise<SessionUser> {
-  const decoded = await verifyFirebaseIdToken(idToken, true).catch(() => {
+  const decoded = await verifyFirebaseIdToken(idToken, true).catch(async () => {
+    await recordLoginEvent({
+      identifier: `unknown:${portal}`,
+      role: "unknown",
+      authMethod: "id_token",
+      result: "failed",
+      failureCategory: "invalid_token",
+      ipAddress: requestMeta?.ipAddress ?? null,
+      userAgent: requestMeta?.userAgent ?? null,
+    }).catch(() => undefined);
     throw new AuthError(401, "INVALID_TOKEN", "Invalid or expired authentication token.");
   });
 
@@ -152,6 +163,17 @@ export async function establishPortalSession(
   }
 
   if (!isRoleAllowedInPortal(sessionUser.role, portal)) {
+    await recordLoginEvent({
+      userId: sessionUser.uid,
+      identifier: sessionUser.email ?? sessionUser.uid,
+      role: sessionUser.role,
+      instituteId: sessionUser.instituteId,
+      authMethod: "id_token",
+      result: "blocked",
+      failureCategory: "wrong_portal",
+      ipAddress: requestMeta?.ipAddress ?? null,
+      userAgent: requestMeta?.userAgent ?? null,
+    }).catch(() => undefined);
     await recordAuditLog({
       action: "AUTH_LOGIN_REJECTED",
       actorUid: sessionUser.uid,
@@ -169,6 +191,17 @@ export async function establishPortalSession(
   const authUser = await getAdminUserByUid(sessionUser.uid);
   if (authUser.disabled) {
     await revokeUserRefreshTokens(sessionUser.uid).catch(() => undefined);
+    await recordLoginEvent({
+      userId: sessionUser.uid,
+      identifier: sessionUser.email ?? sessionUser.uid,
+      role: sessionUser.role,
+      instituteId: sessionUser.instituteId,
+      authMethod: "id_token",
+      result: "blocked",
+      failureCategory: "account_disabled",
+      ipAddress: requestMeta?.ipAddress ?? null,
+      userAgent: requestMeta?.userAgent ?? null,
+    }).catch(() => undefined);
     throw new AuthError(403, "ACCOUNT_DISABLED", "This account has been disabled.");
   }
 
@@ -235,7 +268,28 @@ export async function establishPortalSession(
     }
   }
 
-  await createAndSetSessionCookie(idToken);
+  const sessionId = await createAndSetSessionCookie(idToken, {
+    userId: sessionUser.uid,
+    email: sessionUser.email,
+    role: sessionUser.role,
+    instituteId: sessionUser.instituteId,
+    ipAddress: requestMeta?.ipAddress ?? null,
+    userAgent: requestMeta?.userAgent ?? null,
+  });
+
+  const mfaEnrolled = (authUser.multiFactor?.enrolledFactors?.length ?? 0) > 0;
+  await recordLoginEvent({
+    userId: sessionUser.uid,
+    identifier: sessionUser.email ?? sessionUser.uid,
+    role: sessionUser.role,
+    instituteId: sessionUser.instituteId,
+    authMethod: "id_token",
+    result: "success",
+    ipAddress: requestMeta?.ipAddress ?? null,
+    userAgent: requestMeta?.userAgent ?? null,
+    sessionId,
+    mfaEnrolled,
+  }).catch(() => undefined);
 
   await recordAuditLog({
     action: "AUTH_LOGIN_SUCCESS",
@@ -243,7 +297,7 @@ export async function establishPortalSession(
     actorRole: sessionUser.role,
     instituteId: sessionUser.instituteId,
     targetId: sessionUser.studentId ?? sessionUser.instituteId,
-    metadata: { portal },
+    metadata: { portal, sessionId },
   });
 
   return sessionUser;

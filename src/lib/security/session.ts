@@ -9,11 +9,15 @@ import {
 } from "@/lib/firebase/auth";
 import {
   institutesCollection,
+  securitySessionsCollection,
   studentsCollection,
   usersCollection,
 } from "@/lib/firebase/firestore";
+import { generateId } from "@/lib/utils/ids";
 import { extractSessionUserFromClaims, isRoleAllowedInPortal } from "./permissions";
 import type { PortalType, SessionUser } from "@/types/auth";
+
+export const SESSION_ID_COOKIE_NAME = "cd_sid";
 
 export class AuthError extends Error {
   readonly status: number;
@@ -43,17 +47,71 @@ export function getSessionCookieConfig() {
   };
 }
 
-export async function createAndSetSessionCookie(idToken: string): Promise<void> {
+export async function createAndSetSessionCookie(
+  idToken: string,
+  meta?: {
+    userId?: string;
+    email?: string | null;
+    role?: SessionUser["role"];
+    instituteId?: string | null;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+  }
+): Promise<string> {
   const config = getSessionCookieConfig();
   const sessionCookie = await createFirebaseSessionCookie(idToken, config.expiresInMs);
   const cookieStore = await cookies();
   cookieStore.set(config.name, sessionCookie, config.options);
+
+  const sessionId = generateId("SES");
+  cookieStore.set(SESSION_ID_COOKIE_NAME, sessionId, config.options);
+
+  if (meta?.userId && meta?.role) {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + config.expiresInMs).toISOString();
+    await securitySessionsCollection()
+      .doc(sessionId)
+      .set({
+        id: sessionId,
+        userId: meta.userId,
+        email: meta.email ?? null,
+        role: meta.role,
+        instituteId: meta.instituteId ?? null,
+        createdAt: now.toISOString(),
+        lastVerifiedAt: now.toISOString(),
+        expiresAt,
+        ipAddress: meta.ipAddress ?? null,
+        userAgent: meta.userAgent ? meta.userAgent.slice(0, 240) : null,
+        status: "active",
+        revokedAt: null,
+        revokedByUid: null,
+        revokeReason: null,
+      })
+      .catch(() => undefined);
+  }
+
+  return sessionId;
 }
 
 export async function clearSessionCookie(): Promise<void> {
   const config = getSessionCookieConfig();
   const cookieStore = await cookies();
+  const sid = cookieStore.get(SESSION_ID_COOKIE_NAME)?.value;
+  if (sid) {
+    await securitySessionsCollection()
+      .doc(sid)
+      .update({
+        status: "revoked",
+        revokedAt: new Date().toISOString(),
+        revokeReason: "User logout",
+      })
+      .catch(() => undefined);
+  }
   cookieStore.set(config.name, "", {
+    ...config.options,
+    maxAge: 0,
+  });
+  cookieStore.set(SESSION_ID_COOKIE_NAME, "", {
     ...config.options,
     maxAge: 0,
   });
@@ -87,9 +145,35 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     const config = getSessionCookieConfig();
     const cookieStore = await cookies();
     const rawCookie = cookieStore.get(config.name)?.value;
+    const sid = cookieStore.get(SESSION_ID_COOKIE_NAME)?.value;
 
     if (!rawCookie) {
       return null;
+    }
+
+    if (sid) {
+      const sessionSnap = await securitySessionsCollection()
+        .doc(sid)
+        .get()
+        .catch(() => null);
+      const sessionDoc = sessionSnap?.data();
+      if (sessionSnap?.exists && sessionDoc) {
+        if (sessionDoc.status === "revoked") {
+          return null;
+        }
+        if (
+          sessionDoc.status === "expired" ||
+          Date.parse(sessionDoc.expiresAt) <= Date.now()
+        ) {
+          if (sessionDoc.status !== "expired") {
+            await securitySessionsCollection()
+              .doc(sid)
+              .update({ status: "expired" })
+              .catch(() => undefined);
+          }
+          return null;
+        }
+      }
     }
 
     const decoded = await verifyFirebaseSessionCookie(rawCookie, true);
@@ -163,6 +247,13 @@ export async function getSessionUser(): Promise<SessionUser | null> {
         await revokeUserRefreshTokens(sessionUser.uid).catch(() => undefined);
         return null;
       }
+    }
+
+    if (sid) {
+      await securitySessionsCollection()
+        .doc(sid)
+        .update({ lastVerifiedAt: new Date().toISOString() })
+        .catch(() => undefined);
     }
 
     return sessionUser;

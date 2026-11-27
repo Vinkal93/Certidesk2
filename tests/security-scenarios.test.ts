@@ -197,6 +197,9 @@ vi.mock("@/lib/firebase/firestore", () => ({
     PAYMENT_GATEWAY_CONFIG: "paymentGatewayConfig",
     GATEWAY_CONFIG_HISTORY: "gateway_config_history",
     WEBHOOK_EVENTS: "webhook_events",
+    RECHARGE_PLANS: "recharge_plans",
+    WALLET_BONUS_GRANTS: "wallet_bonus_grants",
+    ADMISSION_OPERATIONS: "admission_operations",
   },
   institutesCollection: () => ({ doc: (id: string) => makeDocRef("institutes", id) }),
   usersCollection: () => ({ doc: (id: string) => makeDocRef("users", id) }),
@@ -206,6 +209,34 @@ vi.mock("@/lib/firebase/firestore", () => ({
   }),
   walletTransactionsCollection: () => ({
     doc: (id: string) => makeDocRef("wallet_transactions", id),
+  }),
+  walletBonusGrantsCollection: () => ({
+    doc: (id: string) => makeDocRef("wallet_bonus_grants", id),
+  }),
+  rechargePlansCollection: () => ({
+    doc: (id: string) => makeDocRef("recharge_plans", id),
+  }),
+  admissionOperationsCollection: () => ({
+    doc: (id: string) => makeDocRef("admission_operations", id),
+  }),
+  securitySessionsCollection: () => ({
+    doc: (id: string) => makeDocRef("securitySessions", id),
+    where: () => ({ get: async () => ({ docs: [] }) }),
+  }),
+  securityLoginEventsCollection: () => ({
+    doc: (id: string) => makeDocRef("securityLoginEvents", id),
+    where: () => ({ get: async () => ({ docs: [] }) }),
+  }),
+  securityAlertsCollection: () => ({
+    doc: (id: string) => makeDocRef("securityAlerts", id),
+    where: () => ({ get: async () => ({ docs: [] }) }),
+  }),
+  securityAlertRulesCollection: () => ({
+    doc: (id: string) => makeDocRef("securityAlertRules", id),
+    get: async () => ({ empty: true, docs: [] }),
+  }),
+  securityPoliciesCollection: () => ({
+    doc: (id: string) => makeDocRef("securityPolicies", id),
   }),
   auditLogsCollection: () => ({ doc: (id: string) => makeDocRef("audit_logs", id) }),
   paymentOrdersCollection: () => ({
@@ -433,7 +464,7 @@ describe("CertiDesk Pro — 17 Security & Operational Scenarios", () => {
 
   it("13. Wallet cannot go negative", async () => {
     expect(() => computeWalletDebit(10000, 15000)).toThrowError(
-      /Insufficient institute wallet balance/
+      /Insufficient wallet balance/
     );
 
     const instA = await establishPortalSession("token:inst_a_admin", "institute");
