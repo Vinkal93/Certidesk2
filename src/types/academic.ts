@@ -4,6 +4,11 @@ export interface CourseSubject {
   code: string;
   order: number;
   maxMarks: number;
+  passingMarks?: number | undefined;
+  theoryMaxMarks?: number | undefined;
+  practicalMaxMarks?: number | undefined;
+  type?: "theory" | "practical" | "both" | undefined;
+  active?: boolean | undefined;
 }
 
 export interface CourseRecord {
@@ -11,11 +16,15 @@ export interface CourseRecord {
   instituteId: string;
   name: string;
   code: string;
+  category?: string;
   duration: string;
   feePaise: number;
+  admissionFeePaise?: number;
+  certificateEligible?: boolean;
+  marksheetEnabled?: boolean;
   description: string;
   subjects: CourseSubject[];
-  status: "active" | "inactive";
+  status: "active" | "inactive" | "archived";
   createdAt: string;
   updatedAt: string;
 }
@@ -24,16 +33,42 @@ export interface BatchRecord {
   id: string;
   instituteId: string;
   name: string;
+  code?: string;
   courseId: string;
   courseName: string;
   timing: string;
+  startDate?: string;
+  expectedEndDate?: string;
+  workingDays?: string[];
+  room?: string | null;
+  description?: string;
   teacherUid: string | null;
   teacherName: string | null;
   capacity: number;
   enrolledCount: number;
-  status: "active" | "completed" | "inactive";
+  status: "active" | "completed" | "inactive" | "archived";
   createdAt: string;
   updatedAt: string;
+}
+
+export interface StudentBatchTransferRecord {
+  id: string;
+  instituteId: string;
+  studentId: string;
+  studentCode: string;
+  studentName: string;
+  oldCourseId: string | null;
+  oldCourseName: string;
+  oldBatchId: string | null;
+  oldBatchName: string;
+  newCourseId: string;
+  newCourseName: string;
+  newBatchId: string;
+  newBatchName: string;
+  effectiveDate: string;
+  reason: string;
+  actorUid: string;
+  createdAt: string;
 }
 
 export type AttendanceStatus = "present" | "absent" | "leave";

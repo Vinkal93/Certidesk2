@@ -27,8 +27,16 @@ export function SubscriptionsClient({
 }: Props) {
   const router = useRouter();
   const [instituteId, setInstituteId] = useState(institutes[0]?.id ?? "");
-  const [planId, setPlanId] = useState(plans[0]?.id ?? "");
+  const [planId, setPlanId] = useState(plans[0]?.id ?? "__monthly_platform_fee__");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [customPriceRupees, setCustomPriceRupees] = useState(
+    plans[0]?.monthlyDisplayRupees !== undefined
+      ? String(plans[0].monthlyDisplayRupees)
+      : "999"
+  );
+  const [subStatus, setSubStatus] = useState<
+    "active" | "trialing" | "past_due" | "suspended" | "cancelled"
+  >("active");
   const [overrideInstId, setOverrideInstId] = useState(institutes[0]?.id ?? "");
   const [featureKey, setFeatureKey] = useState("students");
   const [limitOverride, setLimitOverride] = useState("500");
@@ -36,10 +44,20 @@ export function SubscriptionsClient({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const activeSubs = subscriptions.filter((s) => s.status === "active");
+  const monthlyRecurringRevenue = activeSubs.reduce((sum, s) => {
+    const monthly =
+      s.billingCycle === "yearly"
+        ? Math.round(s.priceSnapshotRupees / 12)
+        : s.priceSnapshotRupees;
+    return sum + monthly;
+  }, 0);
+
   async function handleAssign(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setNotice(null);
+    const parsedPrice = Number(customPriceRupees);
     const res = await fetch("/api/su/subscriptions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -48,6 +66,10 @@ export function SubscriptionsClient({
         instituteId,
         planId,
         billingCycle,
+        status: subStatus,
+        ...(Number.isFinite(parsedPrice) && parsedPrice >= 0
+          ? { customPriceRupees: parsedPrice }
+          : {}),
       }),
     });
     const json = (await res.json()) as { error?: { message?: string } };
@@ -55,7 +77,7 @@ export function SubscriptionsClient({
       setError(json.error?.message ?? "Failed to assign subscription.");
       return;
     }
-    setNotice("Subscription assigned with price & quota snapshot.");
+    setNotice("Monthly platform subscription fee & snapshot saved.");
     router.refresh();
   }
 
@@ -99,10 +121,43 @@ export function SubscriptionsClient({
         </p>
       )}
 
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-muted text-xs font-medium">Monthly Recurring Revenue</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              ₹{monthlyRecurringRevenue.toLocaleString("en-IN")}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-muted text-xs font-medium">Active Subscriptions</p>
+            <p className="text-foreground mt-1 text-2xl font-bold">{activeSubs.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-muted text-xs font-medium">Total Assigned</p>
+            <p className="text-foreground mt-1 text-2xl font-bold">
+              {subscriptions.length}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-muted text-xs font-medium">Entitlement Overrides</p>
+            <p className="text-foreground mt-1 text-2xl font-bold">{overrides.length}</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Assign Institute Subscription</CardTitle>
+            <CardTitle className="text-base">
+              Configure Monthly Platform Subscription Fee
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAssign} className="space-y-3">
@@ -124,13 +179,29 @@ export function SubscriptionsClient({
               </div>
               <div>
                 <label className="text-muted-foreground mb-1 block text-xs font-medium">
-                  Plan
+                  Plan / Fee Tier
                 </label>
                 <select
                   className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm"
                   value={planId}
-                  onChange={(e) => setPlanId(e.target.value)}
+                  onChange={(e) => {
+                    const nextId = e.target.value;
+                    setPlanId(nextId);
+                    const matched = plans.find((p) => p.id === nextId);
+                    if (matched) {
+                      setCustomPriceRupees(
+                        String(
+                          billingCycle === "yearly"
+                            ? matched.yearlyDisplayRupees
+                            : matched.monthlyDisplayRupees
+                        )
+                      );
+                    }
+                  }}
                 >
+                  <option value="__monthly_platform_fee__">
+                    Platform Monthly Fee (Custom Amount)
+                  </option>
                   {plans.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} (₹{p.monthlyDisplayRupees}/mo)
@@ -138,23 +209,59 @@ export function SubscriptionsClient({
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="text-muted-foreground mb-1 block text-xs font-medium">
-                  Billing Cycle
-                </label>
-                <select
-                  className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm"
-                  value={billingCycle}
-                  onChange={(e) =>
-                    setBillingCycle(e.target.value as "monthly" | "yearly")
-                  }
-                >
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="text-muted-foreground mb-1 block text-xs font-medium">
+                    Billing Cycle
+                  </label>
+                  <select
+                    className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm"
+                    value={billingCycle}
+                    onChange={(e) =>
+                      setBillingCycle(e.target.value as "monthly" | "yearly")
+                    }
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-muted-foreground mb-1 block text-xs font-medium">
+                    Subscription Fee (₹)
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={customPriceRupees}
+                    onChange={(e) => setCustomPriceRupees(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-muted-foreground mb-1 block text-xs font-medium">
+                    Status
+                  </label>
+                  <select
+                    className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm"
+                    value={subStatus}
+                    onChange={(e) =>
+                      setSubStatus(
+                        e.target.value as
+                          "active" | "trialing" | "past_due" | "suspended" | "cancelled"
+                      )
+                    }
+                  >
+                    <option value="active">Active</option>
+                    <option value="trialing">Trialing</option>
+                    <option value="past_due">Past Due</option>
+                    <option value="suspended">Suspended</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
               </div>
               <Button type="submit" disabled={!instituteId || !planId}>
-                Assign Subscription
+                Save Subscription &amp; Fee
               </Button>
             </form>
           </CardContent>

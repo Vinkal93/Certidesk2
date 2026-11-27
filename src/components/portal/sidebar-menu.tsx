@@ -53,7 +53,10 @@ export function SidebarMenu({
   };
 
   return (
-    <nav aria-label={ariaLabel} className="flex-1 space-y-2 overflow-y-auto px-3 py-4">
+    <nav
+      aria-label={ariaLabel}
+      className="sidebar-scroll flex-1 space-y-2 overflow-y-auto px-2.5 py-3.5"
+    >
       {groups.map((group, idx) => {
         const hasActiveItem = group.items.some((item) =>
           isItemActive(item.href, pathname)

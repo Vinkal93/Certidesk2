@@ -37,6 +37,7 @@ import { Logo } from "@/components/layout/logo";
 import { SidebarMenu, type SidebarMenuGroup } from "@/components/portal/sidebar-menu";
 import { IconButton } from "@/components/ui/icon-button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { PopupNotificationCenter } from "@/components/portal/popup-notification-center";
 
 const iconMap: Record<StudentNavIcon, LucideIcon> = {
   layoutDashboard: LayoutDashboard,
@@ -238,18 +239,10 @@ export function StudentShell({
           <div className="flex items-center gap-2.5 sm:gap-3">
             <ThemeToggle />
 
-            <Link
-              href="/student/notifications"
-              className="border-border bg-background text-foreground hover:bg-surface relative inline-flex h-9 w-9 items-center justify-center rounded-lg border"
-              aria-label={`Notifications (${unreadNotificationsCount} unread)`}
-            >
-              <Bell className="h-4 w-4" aria-hidden="true" />
-              {unreadNotificationsCount > 0 && (
-                <span className="bg-primary ring-background absolute -top-1.5 -right-1.5 inline-flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white ring-2">
-                  {unreadNotificationsCount > 99 ? "99+" : unreadNotificationsCount}
-                </span>
-              )}
-            </Link>
+            <PopupNotificationCenter
+              extraUnreadCount={unreadNotificationsCount}
+              viewAllHref="/student/notifications"
+            />
 
             <div className="relative">
               <button
@@ -307,7 +300,10 @@ export function StudentShell({
           </div>
         </header>
 
-        <main id="main-content" className="flex-1 p-4 sm:p-6">
+        <main
+          id="main-content"
+          className="min-w-0 flex-1 overflow-x-hidden p-3 sm:p-5 lg:p-6"
+        >
           {children}
         </main>
       </div>

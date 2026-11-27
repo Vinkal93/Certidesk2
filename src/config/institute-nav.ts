@@ -79,6 +79,18 @@ export const instituteNavGroups: InstituteNavGroup[] = [
         requiredPermission: "exams:read",
       },
       {
+        label: "Online Exams",
+        href: "/institute/exams",
+        icon: "clipboardCheck",
+        requiredPermission: "exams:read",
+      },
+      {
+        label: "Question Bank",
+        href: "/institute/question-bank",
+        icon: "bookOpen",
+        requiredPermission: "exams:read",
+      },
+      {
         label: "Marksheets",
         href: "/institute/marksheets",
         icon: "clipboardCheck",
@@ -208,6 +220,12 @@ export const instituteNavGroups: InstituteNavGroup[] = [
         requiredPermission: "communication:send",
       },
       {
+        label: "Manage Logins",
+        href: "/institute/logins",
+        icon: "userCog",
+        requiredPermission: "students:write",
+      },
+      {
         label: "Institute Settings",
         href: "/institute/settings",
         icon: "settings",
@@ -224,6 +242,7 @@ export const instituteRouteTitles: Record<string, string> = {
   "/institute/courses": "Courses & Subjects",
   "/institute/batches": "Batches",
   "/institute/staff": "Staff & Teachers",
+  "/institute/logins": "Manage Logins & Passwords",
   "/institute/attendance": "Attendance",
   "/institute/examinations": "Examinations",
   "/institute/marksheets": "Marksheets",

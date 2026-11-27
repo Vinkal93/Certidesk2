@@ -68,8 +68,7 @@ export const suNavGroups: SuNavGroup[] = [
     items: [
       { label: "Institutes", href: "/su/institutes", icon: "building2" },
       { label: "Institute Owners", href: "/su/owners", icon: "userCheck" },
-      { label: "Students", href: "/su/students", icon: "users" },
-      { label: "Staff", href: "/su/staff", icon: "userCog" },
+      { label: "All Users", href: "/su/users", icon: "users" },
     ],
   },
   {
@@ -114,6 +113,16 @@ export const suNavGroups: SuNavGroup[] = [
       { label: "Feature Flags", href: "/su/feature-flags", icon: "flag" },
       { label: "Module Management", href: "/su/modules", icon: "box" },
       { label: "Announcements", href: "/su/announcements", icon: "megaphone" },
+      {
+        label: "Certificate Studio",
+        href: "/su/certificate-templates",
+        icon: "fileText",
+      },
+      {
+        label: "Marksheet Studio",
+        href: "/su/marksheet-templates",
+        icon: "fileBarChart",
+      },
       { label: "Global Configuration", href: "/su/settings", icon: "settings" },
     ],
   },
@@ -209,6 +218,7 @@ export const suRouteTitles: Record<string, string> = {
   "/su/institutes": "Institutes",
   "/su/institutes/new": "Register Institute",
   "/su/owners": "Institute Owners",
+  "/su/users": "All Users & Access Control",
   "/su/students": "Global Student Directory",
   "/su/staff": "Global Staff Directory",
   "/su/plans": "Plan Management",
