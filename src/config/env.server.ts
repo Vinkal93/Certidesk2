@@ -36,7 +36,7 @@ const serverEnvSchema = z.object({
   GCP_SECRET_MANAGER_PRIVATE_KEY: z.string().min(1).optional(),
   APP_BASE_URL: z.string().min(1).default("http://localhost:3000"),
   SESSION_COOKIE_NAME: z.string().min(1).default("cd_session"),
-  SESSION_EXPIRES_IN_DAYS: z.coerce.number().int().min(1).max(14).default(5),
+  SESSION_EXPIRES_IN_DAYS: z.coerce.number().int().min(1).max(14).default(14),
   SUPER_ADMIN_EMAILS: z.string().optional(),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),

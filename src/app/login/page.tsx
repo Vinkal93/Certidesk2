@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, Building2, GraduationCap, QrCode, ShieldCheck } from "lucide-react";
+import { getSessionUser } from "@/lib/security/session";
 import { buildPrivateNoIndexMetadata } from "@/lib/seo/metadata";
 import { SplitAuthLayout } from "@/features/auth/components/split-auth-layout";
 
@@ -9,7 +11,19 @@ export const metadata: Metadata = buildPrivateNoIndexMetadata(
   "Choose your CertiDesk Pro Institute Admin or Student portal."
 );
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  let user = null;
+  try {
+    user = await getSessionUser();
+  } catch {
+    user = null;
+  }
+  if (user?.role === "super_admin") redirect("/su/dashboard");
+  if (user?.role === "institute_admin" || user?.role === "staff") {
+    redirect("/institute/dashboard");
+  }
+  if (user?.role === "student") redirect("/student/dashboard");
+
   return (
     <SplitAuthLayout>
       <div className="space-y-6">

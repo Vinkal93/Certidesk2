@@ -48,21 +48,21 @@ export function InsightCard({
 }: InsightCardProps) {
   const strokeColor =
     trendTone === "positive"
-      ? "#059669"
+      ? "var(--color-success)"
       : trendTone === "negative"
-        ? "#dc2626"
-        : "#cbd5e1";
+        ? "var(--color-danger)"
+        : "var(--color-muted)";
 
   const boxBg =
     trendTone === "positive"
-      ? "bg-emerald-50/70"
+      ? "bg-emerald-50/70 dark:bg-emerald-950/40"
       : trendTone === "negative"
-        ? "bg-red-50/70"
-        : "bg-[#f3f4f6]";
+        ? "bg-red-50/70 dark:bg-red-950/40"
+        : "bg-slate-100 dark:bg-slate-800/60";
 
   const trendColor =
     trendTone === "positive"
-      ? "text-emerald-700"
+      ? "text-success"
       : trendTone === "negative"
         ? "text-danger"
         : "text-muted";

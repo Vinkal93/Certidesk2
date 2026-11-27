@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { getSessionUser } from "@/lib/security/session";
 import { buildPrivateNoIndexMetadata } from "@/lib/seo/metadata";
 import { SplitAuthLayout } from "@/features/auth/components/split-auth-layout";
 import { PortalLoginForm } from "@/features/auth/components/portal-login-form";
@@ -10,7 +12,17 @@ export const metadata: Metadata = buildPrivateNoIndexMetadata(
   "Sign in to your CertiDesk Pro Student Portal with your Student ID."
 );
 
-export default function StudentDedicatedLoginPage() {
+export default async function StudentDedicatedLoginPage() {
+  let user = null;
+  try {
+    user = await getSessionUser();
+  } catch {
+    user = null;
+  }
+  if (user?.role === "student") {
+    redirect("/student/dashboard");
+  }
+
   return (
     <SplitAuthLayout>
       <div className="space-y-4">

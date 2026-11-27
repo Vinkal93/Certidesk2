@@ -636,3 +636,54 @@ export async function resetStudentPassword(
     temporaryPassword,
   };
 }
+
+export async function deleteStudent(
+  actor: SessionUser,
+  studentId: string
+): Promise<{ deleted: true; studentCode: string }> {
+  if (!hasStaffPermission(actor, "students:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing students:write permission.");
+  }
+
+  const student = await getInstituteStudentById(actor, studentId);
+  const db = getAdminFirestore();
+  const auth = getAdminAuth();
+
+  if (student.uid) {
+    await auth.deleteUser(student.uid).catch(async () => {
+      await auth.updateUser(student.uid, { disabled: true }).catch(() => undefined);
+    });
+  }
+
+  const batch = db.batch();
+  batch.delete(studentsCollection().doc(student.id));
+  if (student.uid) {
+    batch.delete(usersCollection().doc(student.uid));
+  }
+  if (student.studentCode) {
+    batch.delete(loginMappingsCollection().doc(student.studentCode.toUpperCase()));
+  }
+  await batch.commit();
+
+  if (student.batchId) {
+    const batchRef = db.collection("batches").doc(student.batchId);
+    const batchSnap = await batchRef.get().catch(() => null);
+    if (batchSnap?.exists) {
+      const count = Number(batchSnap.data()?.enrolledCount ?? 0);
+      if (count > 0) {
+        await batchRef.update({ enrolledCount: count - 1 }).catch(() => undefined);
+      }
+    }
+  }
+
+  await recordAuditLog({
+    action: "STUDENT_DELETED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: student.instituteId,
+    targetId: student.id,
+    metadata: { studentCode: student.studentCode, fullName: student.fullName },
+  });
+
+  return { deleted: true, studentCode: student.studentCode };
+}

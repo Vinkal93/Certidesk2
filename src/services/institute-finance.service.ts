@@ -220,7 +220,9 @@ export async function createFeeStructure(
 export async function collectInstituteFee(
   actor: SessionUser,
   input: {
-    feePlanId: string;
+    feePlanId?: string | undefined;
+    studentId?: string | undefined;
+    totalFeeRupees?: number | undefined;
     amountRupees: number;
     discountRupees?: number | undefined;
     method: FeePaymentMethod;
@@ -244,8 +246,82 @@ export async function collectInstituteFee(
     throw new AuthError(400, "INVALID_AMOUNT", "Payment amount must be positive.");
   }
 
+  let resolvedPlanId = input.feePlanId?.trim() || "";
+  if (!resolvedPlanId && input.studentId) {
+    const existingForStudent = await feePlansCol()
+      .where("instituteId", "==", institute.id)
+      .where("studentId", "==", input.studentId)
+      .limit(1)
+      .get();
+
+    if (!existingForStudent.empty && existingForStudent.docs[0]) {
+      resolvedPlanId = existingForStudent.docs[0].id;
+    } else {
+      const { studentsCollection } = await import("@/lib/firebase/firestore");
+      const stSnap = await studentsCollection().doc(input.studentId).get();
+      const st = stSnap.data();
+      if (!stSnap.exists || !st || st.instituteId !== institute.id) {
+        throw new AuthError(404, "STUDENT_NOT_FOUND", "Selected student not found.");
+      }
+      const { getAdminFirestore: getDb } = await import("@/lib/firebase/admin");
+      const coursesSnap = st.courseId
+        ? await getDb().collection("courses").doc(st.courseId).get()
+        : null;
+      const matchedCourse = coursesSnap?.exists
+        ? (coursesSnap.data() as {
+            feePaise?: number;
+            monthlyFeePaise?: number;
+            durationMonths?: number;
+            admissionFeePaise?: number;
+          })
+        : null;
+
+      const courseDefaultPaise = matchedCourse?.feePaise ?? 0;
+      const totalPaise = Math.max(
+        amountPaise + extraDiscountPaise,
+        input.totalFeeRupees
+          ? Math.round(input.totalFeeRupees * 100)
+          : courseDefaultPaise > 0
+            ? courseDefaultPaise
+            : amountPaise
+      );
+      const newPlanId = generateId("FPL");
+      const nowIso = new Date().toISOString();
+      const newPlan: StudentFeePlanRecord = {
+        id: newPlanId,
+        instituteId: institute.id,
+        studentId: st.id,
+        studentCode: st.studentCode,
+        studentName: st.fullName,
+        courseName: st.courseName,
+        totalFeePaise: totalPaise,
+        ...(matchedCourse?.monthlyFeePaise
+          ? { monthlyFeePaise: matchedCourse.monthlyFeePaise }
+          : {}),
+        ...(matchedCourse?.durationMonths
+          ? { durationMonths: matchedCourse.durationMonths }
+          : {}),
+        ...(matchedCourse?.admissionFeePaise
+          ? { admissionFeePaise: matchedCourse.admissionFeePaise }
+          : {}),
+        startDate: st.admissionDate || st.createdAt || nowIso,
+        discountPaise: 0,
+        paidPaise: 0,
+        pendingPaise: totalPaise,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      await feePlansCol().doc(newPlanId).set(newPlan);
+      resolvedPlanId = newPlanId;
+    }
+  }
+
+  if (!resolvedPlanId) {
+    throw new AuthError(400, "VALIDATION_ERROR", "Select a student or fee plan.");
+  }
+
   const db = getAdminFirestore();
-  const planRef = feePlansCol().doc(input.feePlanId);
+  const planRef = feePlansCol().doc(resolvedPlanId);
   const existingReceiptsSnap = await feeReceiptsCollection()
     .where("instituteId", "==", institute.id)
     .get();

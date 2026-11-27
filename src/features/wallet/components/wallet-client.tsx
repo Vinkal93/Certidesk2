@@ -232,16 +232,16 @@ export function WalletClient({
       {lowBalance && (
         <div
           role="alert"
-          className="flex flex-col justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 sm:flex-row sm:items-center"
+          className="bg-warning-soft flex flex-col justify-between gap-3 rounded-xl border border-amber-200 p-4 text-sm text-amber-950 sm:flex-row sm:items-center dark:border-amber-800/60 dark:text-amber-200"
         >
           <div className="flex items-start gap-2.5">
             <AlertTriangle
-              className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
+              className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
               aria-hidden="true"
             />
             <div>
               <p className="font-semibold">Low Wallet Balance</p>
-              <p className="text-xs text-amber-800">
+              <p className="text-xs text-amber-800 dark:text-amber-300/90">
                 Available spendable balance (₹
                 {(wallet.totalSpendableBalancePaise / 100).toFixed(2)}) is below the
                 student admission charge (₹{(admissionFeePaise / 100).toFixed(2)}).
@@ -252,7 +252,7 @@ export function WalletClient({
           {mode !== "recharge_only" && canRecharge && (
             <Link
               href="/institute/wallet/recharge"
-              className="inline-flex shrink-0 items-center rounded-lg bg-amber-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-800"
+              className="inline-flex shrink-0 items-center rounded-lg bg-amber-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-500"
             >
               Recharge Now
             </Link>
@@ -310,14 +310,14 @@ export function WalletClient({
       {error && (
         <div
           role="alert"
-          className="bg-danger-soft text-danger flex items-start gap-2 rounded-lg border border-red-200 p-3.5 text-sm"
+          className="bg-danger-soft text-danger flex items-start gap-2 rounded-lg border border-red-200 p-3.5 text-sm dark:border-red-800/60"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>
         </div>
       )}
       {paymentState === "pending" && !error && (
-        <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3.5 text-sm text-blue-900">
+        <div className="bg-primary-soft text-primary flex items-start gap-2 rounded-lg border border-blue-200 p-3.5 text-sm dark:border-blue-800/60">
           <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             Payment checkout is in progress. Wallet balance updates only after server-side
@@ -326,7 +326,7 @@ export function WalletClient({
         </div>
       )}
       {message && (
-        <div className="bg-success-soft text-success flex items-start gap-2 rounded-lg border border-emerald-200 p-3.5 text-sm">
+        <div className="bg-success-soft text-success flex items-start gap-2 rounded-lg border border-emerald-200 p-3.5 text-sm dark:border-emerald-800/60">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{message}</span>
         </div>
@@ -368,10 +368,10 @@ export function WalletClient({
                       onClick={() => setSelectedPlanId(plan.id)}
                       className={`relative flex cursor-pointer flex-col justify-between rounded-2xl border p-5 transition-all ${
                         isPromo
-                          ? "border-primary bg-blue-50/40 shadow-sm"
+                          ? "border-primary bg-primary-soft shadow-sm"
                           : isSelected
-                            ? "border-navy bg-surface shadow-xs"
-                            : "border-border bg-background hover:border-slate-300"
+                            ? "border-primary/70 bg-surface shadow-xs"
+                            : "border-border bg-background hover:border-slate-300 dark:hover:border-slate-600"
                       }`}
                     >
                       <div>

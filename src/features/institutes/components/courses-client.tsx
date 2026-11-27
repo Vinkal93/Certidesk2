@@ -20,8 +20,10 @@ export function CoursesClient({
   const [courses, setCourses] = React.useState(initialCourses);
   const [name, setName] = React.useState("");
   const [code, setCode] = React.useState("");
-  const [duration, setDuration] = React.useState("");
-  const [feeRupees, setFeeRupees] = React.useState("12000");
+  const [durationMonths, setDurationMonths] = React.useState("12");
+  const [monthlyFeeRupees, setMonthlyFeeRupees] = React.useState("500");
+  const [admissionFeeRupees, setAdmissionFeeRupees] = React.useState("300");
+  const [duration, setDuration] = React.useState("12 Months");
   const [description, setDescription] = React.useState("");
   const [status, setStatus] = React.useState<"active" | "inactive">("active");
   const [subjects, setSubjects] = React.useState<CourseSubject[]>([
@@ -29,6 +31,12 @@ export function CoursesClient({
   ]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const parsedMonths = Math.max(0, Number(durationMonths) || 0);
+  const parsedMonthly = Math.max(0, Number(monthlyFeeRupees) || 0);
+  const parsedAdmission = Math.max(0, Number(admissionFeeRupees) || 0);
+  const computedTuitionRupees = parsedMonths * parsedMonthly;
+  const computedTotalRupees = computedTuitionRupees + parsedAdmission;
 
   const addSubjectRow = () => {
     const nextOrder = subjects.length + 1;
@@ -56,8 +64,11 @@ export function CoursesClient({
         body: JSON.stringify({
           name,
           code,
-          duration,
-          feeRupees: Number(feeRupees),
+          duration: duration.trim() || `${parsedMonths || 1} Months`,
+          durationMonths: parsedMonths > 0 ? parsedMonths : undefined,
+          monthlyFeeRupees: parsedMonthly,
+          admissionFeeRupees: parsedAdmission,
+          feeRupees: computedTotalRupees,
           description,
           status,
           subjects: validSubjects,
@@ -107,8 +118,19 @@ export function CoursesClient({
                   </div>
                   <CardTitle className="mt-2">{course.name}</CardTitle>
                   <p className="text-muted text-xs">
-                    Duration: {course.duration} &bull; Course Fee: ₹
+                    Duration: {course.duration} &bull; Total Fee: ₹
                     {(course.feePaise / 100).toFixed(2)}
+                    {course.monthlyFeePaise ? (
+                      <>
+                        {" "}
+                        ({course.durationMonths ?? "?"}m &times; ₹
+                        {(course.monthlyFeePaise / 100).toFixed(0)}
+                        {course.admissionFeePaise
+                          ? ` + ₹${(course.admissionFeePaise / 100).toFixed(0)} adm.`
+                          : ""}
+                        )
+                      </>
+                    ) : null}
                   </p>
                 </div>
               </CardHeader>
@@ -170,18 +192,58 @@ export function CoursesClient({
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Input
-                  label="Duration"
-                  placeholder="6 Months"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
+                  label="Duration (Months)"
+                  type="number"
+                  min="1"
+                  max="120"
+                  placeholder="12"
+                  value={durationMonths}
+                  onChange={(e) => {
+                    setDurationMonths(e.target.value);
+                    const m = Number(e.target.value);
+                    if (m > 0) setDuration(`${m} Months`);
+                  }}
                   required
                 />
                 <Input
-                  label="Course Fee (₹)"
+                  label="Monthly Fee (₹)"
                   type="number"
                   min="0"
-                  value={feeRupees}
-                  onChange={(e) => setFeeRupees(e.target.value)}
+                  placeholder="500"
+                  value={monthlyFeeRupees}
+                  onChange={(e) => setMonthlyFeeRupees(e.target.value)}
+                  required
+                />
+                <Input
+                  label="Admission Fee (₹)"
+                  type="number"
+                  min="0"
+                  placeholder="300"
+                  value={admissionFeeRupees}
+                  onChange={(e) => setAdmissionFeeRupees(e.target.value)}
+                />
+              </div>
+
+              <div className="border-border bg-surface flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3 text-xs">
+                <span className="text-muted">
+                  Auto Calculation:{" "}
+                  <strong className="text-foreground">
+                    {parsedMonths} &times; ₹{parsedMonthly.toLocaleString("en-IN")}
+                  </strong>{" "}
+                  = ₹{computedTuitionRupees.toLocaleString("en-IN")} + ₹
+                  {parsedAdmission.toLocaleString("en-IN")} admission
+                </span>
+                <span className="text-primary text-sm font-bold tabular-nums">
+                  Total: ₹{computedTotalRupees.toLocaleString("en-IN")}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Input
+                  label="Duration Label"
+                  placeholder="12 Months"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
                   required
                 />
                 <Select

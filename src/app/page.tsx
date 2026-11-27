@@ -25,6 +25,9 @@ import { SolutionsSection } from "@/components/marketing/solutions-section";
 import { PricingSection } from "@/components/marketing/pricing-section";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { FinalCtaSection } from "@/components/marketing/final-cta-section";
+import { listPublicSubscriptionPlans } from "@/services/su-platform.service";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = buildPublicMetadata({
   title: "CertiDesk Pro | Institute & Certificate Management Software",
@@ -41,7 +44,8 @@ export const metadata: Metadata = buildPublicMetadata({
   ],
 });
 
-export default function HomePage() {
+export default async function HomePage() {
+  const publicPlans = await listPublicSubscriptionPlans();
   return (
     <PageContainer>
       <JsonLd data={buildOrganizationJsonLd()} />
@@ -81,7 +85,7 @@ export default function HomePage() {
       <SolutionsSection />
 
       {/* 14. Pricing */}
-      <PricingSection />
+      <PricingSection plans={publicPlans} />
 
       {/* 15. FAQ */}
       <FaqSection />
@@ -175,7 +179,7 @@ export default function HomePage() {
                 Latest Institute Guides
               </h3>
               <ul className="mt-4 space-y-2 text-sm">
-                {BLOG_ARTICLES.map((article) => (
+                {BLOG_ARTICLES.slice(0, 6).map((article) => (
                   <li key={article.slug}>
                     <Link
                       href={`/blog/${article.slug}`}

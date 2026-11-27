@@ -40,9 +40,15 @@ import { getClientAuth, isFirebaseClientConfigured } from "@/lib/firebase/client
 import { Logo } from "@/components/layout/logo";
 import { SidebarMenu, type SidebarMenuGroup } from "@/components/portal/sidebar-menu";
 import { PopupNotificationCenter } from "@/components/portal/popup-notification-center";
+import { SignOutConfirmModal } from "@/components/portal/sign-out-confirm-modal";
+import { ManageDevicesModal } from "@/components/portal/manage-devices-modal";
 import { Badge } from "@/components/ui/badge";
 import { IconButton } from "@/components/ui/icon-button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import {
+  TopbarWalletButton,
+  TopbarWalletModal,
+} from "@/components/institute/topbar-wallet-modal";
 import type { SessionUser } from "@/types/auth";
 
 const iconComponents: Record<InstituteNavIcon, LucideIcon> = {
@@ -80,6 +86,9 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
+  const [walletOpen, setWalletOpen] = React.useState(false);
+  const [devicesOpen, setDevicesOpen] = React.useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [loggingOut, setLoggingOut] = React.useState(false);
 
@@ -138,8 +147,7 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
       if (isFirebaseClientConfigured()) {
         await signOut(getClientAuth()).catch(() => undefined);
       }
-      router.replace("/institute/login");
-      router.refresh();
+      window.location.assign("/");
     } finally {
       setLoggingOut(false);
     }
@@ -324,6 +332,12 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
               </div>
             </form>
 
+            <TopbarWalletButton
+              balancePaise={institute.walletBalancePaise}
+              lowBalance={lowBalance}
+              onClick={() => setWalletOpen(true)}
+            />
+
             <ThemeToggle />
 
             {/* Popup Messages & Notifications */}
@@ -391,8 +405,21 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
                     </Link>
                     <button
                       type="button"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        setDevicesOpen(true);
+                      }}
+                      className="text-foreground hover:bg-surface block w-full cursor-pointer rounded-lg px-2.5 py-2 text-left"
+                    >
+                      Manage Devices
+                    </button>
+                    <button
+                      type="button"
                       disabled={loggingOut}
-                      onClick={handleLogout}
+                      onClick={() => {
+                        setProfileOpen(false);
+                        setLogoutConfirmOpen(true);
+                      }}
                       className="text-danger hover:bg-danger-soft flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left"
                     >
                       <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
@@ -412,6 +439,19 @@ export function InstituteShell({ user, institute, children }: InstituteShellProp
           {children}
         </main>
       </div>
+
+      <TopbarWalletModal
+        open={walletOpen}
+        onClose={() => setWalletOpen(false)}
+        institute={institute}
+      />
+      <SignOutConfirmModal
+        open={logoutConfirmOpen}
+        loading={loggingOut}
+        onCancel={() => setLogoutConfirmOpen(false)}
+        onConfirm={() => void handleLogout()}
+      />
+      <ManageDevicesModal open={devicesOpen} onClose={() => setDevicesOpen(false)} />
     </div>
   );
 }

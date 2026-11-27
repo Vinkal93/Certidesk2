@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireSessionUser } from "@/lib/security/session";
 import { studentActionSchema, updateStudentSchema } from "@/lib/validation/student";
 import {
+  deleteStudent,
   getInstituteStudentById,
   resetStudentPassword,
   setStudentStatus,
@@ -73,6 +74,20 @@ export async function POST(
 
     const reset = await resetStudentPassword(actor, id);
     return jsonOk({ reset });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const actor = await requireSessionUser("institute");
+    const { id } = await context.params;
+    const result = await deleteStudent(actor, id);
+    return jsonOk(result);
   } catch (error) {
     return handleApiError(error);
   }

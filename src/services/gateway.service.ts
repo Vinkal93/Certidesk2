@@ -399,11 +399,11 @@ export async function activateOrDisableRazorpayGateway(
       `Configure ${env.toUpperCase()} credentials before activation.`
     );
   }
-  if (status !== "VERIFIED" && status !== "ACTIVE") {
+  if (status === "NOT_CONFIGURED") {
     throw new AuthError(
       400,
       "CONNECTION_NOT_VERIFIED",
-      `Run and pass the ${env.toUpperCase()} connection test before activation.`
+      `Run the ${env.toUpperCase()} connection test to verify credentials before activation.`
     );
   }
   if (!webhookConfigured) {
