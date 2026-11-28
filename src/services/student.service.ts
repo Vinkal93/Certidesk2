@@ -781,3 +781,54 @@ export async function restoreStudent(
     updatedAt: now,
   };
 }
+
+export async function getInstituteStudentInsights(actor: SessionUser, studentId: string) {
+  const student = await getInstituteStudentById(actor, studentId);
+  const db = getAdminFirestore();
+
+  const [plansSnap, paymentsSnap, attendanceSnap] = await Promise.all([
+    db.collection("student_fee_plans").where("studentId", "==", student.id).get(),
+    db.collection("fee_payments").where("studentId", "==", student.id).get(),
+    db.collection("attendance_records").where("studentId", "==", student.id).get(),
+  ]);
+
+  const feePlan =
+    plansSnap.docs
+      .map((d) => d.data() as import("@/types/academic").StudentFeePlanRecord)
+      .find((p) => p.instituteId === student.instituteId) ?? null;
+
+  const { computeMonthlyDueBreakdown } = await import("@/lib/finance/monthly-dues");
+  const feeBreakdown = feePlan ? computeMonthlyDueBreakdown(feePlan) : null;
+
+  const recentPayments = paymentsSnap.docs
+    .map((d) => d.data() as import("@/types/academic").FeePaymentRecord)
+    .filter((p) => p.instituteId === student.instituteId)
+    .sort((a, b) => (b.paidAt || b.createdAt).localeCompare(a.paidAt || a.createdAt))
+    .slice(0, 10);
+
+  const attendanceRecords = attendanceSnap.docs
+    .map((d) => d.data() as import("@/types/academic").AttendanceRecord)
+    .filter((a) => a.instituteId === student.instituteId)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const presentDays = attendanceRecords.filter((a) => a.status === "present").length;
+  const absentDays = attendanceRecords.filter((a) => a.status === "absent").length;
+  const leaveDays = attendanceRecords.filter((a) => a.status === "leave").length;
+  const totalDays = attendanceRecords.length;
+  const percentage =
+    totalDays > 0 ? Number(((presentDays / totalDays) * 100).toFixed(1)) : 0;
+
+  return {
+    feePlan,
+    feeBreakdown,
+    recentPayments,
+    attendanceSummary: {
+      totalDays,
+      presentDays,
+      absentDays,
+      leaveDays,
+      percentage,
+    },
+    recentAttendance: attendanceRecords.slice(0, 15),
+  };
+}
