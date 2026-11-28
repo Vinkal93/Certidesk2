@@ -31,30 +31,30 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 const badgeVariants: Record<BadgeVariant, string> = {
   default:
-    "bg-zinc-100 text-[#52525b] border-zinc-200/80 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700",
+    "bg-zinc-100 text-zinc-800 border-zinc-300 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700",
   primary:
-    "bg-sky-100/90 text-[#0066CC] border-sky-200/80 dark:bg-sky-950/70 dark:text-sky-300 dark:border-sky-800/70",
+    "bg-sky-50 text-blue-800 border-blue-200 dark:bg-sky-950/70 dark:text-sky-200 dark:border-sky-800/70",
   navy: "bg-slate-900 text-white border-slate-900 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700",
   success:
-    "bg-emerald-50 text-[#15803d] border-emerald-200/80 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800/70",
+    "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-200 dark:border-emerald-800/70",
   warning:
-    "bg-orange-50 text-[#b45309] border-orange-200/80 dark:bg-orange-950/70 dark:text-orange-300 dark:border-orange-800/70",
+    "bg-orange-50 text-amber-800 border-orange-200 dark:bg-orange-950/70 dark:text-amber-200 dark:border-orange-800/70",
   danger:
-    "bg-rose-50 text-[#be123c] border-rose-200/80 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800/70",
+    "bg-rose-50 text-red-800 border-red-200 dark:bg-rose-950/70 dark:text-red-200 dark:border-rose-800/70",
   outline:
     "bg-background text-slate-800 border-slate-300 dark:bg-slate-900/60 dark:text-slate-200 dark:border-slate-700",
   pending:
-    "bg-orange-50 text-[#c26d1f] border-orange-200/80 dark:bg-orange-950/70 dark:text-orange-300 dark:border-orange-800/70",
+    "bg-orange-50 text-amber-800 border-orange-200 dark:bg-orange-950/70 dark:text-amber-200 dark:border-orange-800/70",
   failed:
-    "bg-rose-50 text-[#be3e2e] border-rose-200/80 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800/70",
+    "bg-rose-50 text-red-800 border-red-200 dark:bg-rose-950/70 dark:text-red-200 dark:border-rose-800/70",
   in_progress:
-    "bg-sky-100/90 text-[#0070d1] border-sky-200/80 dark:bg-sky-950/70 dark:text-sky-300 dark:border-sky-800/70",
+    "bg-sky-50 text-blue-800 border-blue-200 dark:bg-sky-950/70 dark:text-sky-200 dark:border-sky-800/70",
   in_review:
-    "bg-yellow-50 text-[#a16207] border-yellow-200/80 dark:bg-yellow-950/70 dark:text-yellow-300 dark:border-yellow-800/70",
+    "bg-yellow-50 text-amber-900 border-yellow-300 dark:bg-yellow-950/70 dark:text-yellow-200 dark:border-yellow-800/70",
   expired:
-    "bg-zinc-100 text-[#52525b] border-zinc-200/80 dark:bg-zinc-800/80 dark:text-zinc-300 dark:border-zinc-700",
+    "bg-zinc-100 text-zinc-700 border-zinc-300 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700",
   submitted:
-    "bg-violet-50 text-[#6C3CF0] border-violet-200/80 dark:bg-violet-950/70 dark:text-violet-300 dark:border-violet-800/70",
+    "bg-violet-50 text-violet-800 border-violet-200 dark:bg-violet-950/70 dark:text-violet-200 dark:border-violet-800/70",
 };
 
 const ICON_VARIANTS = new Set<BadgeVariant>([
@@ -155,3 +155,5 @@ export function StatusChip({
     </Badge>
   );
 }
+
+export const StatusBadge = StatusChip;
