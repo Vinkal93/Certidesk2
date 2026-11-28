@@ -14,7 +14,7 @@ import {
   RefreshCw,
   XCircle,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge, StatusChip } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveFormModal } from "@/components/ui/responsive-form-modal";
@@ -423,9 +423,7 @@ export function ExamResultsClient({
                         </td>
                         <td className="px-3 py-2.5 tabular-nums">{r.percentage}%</td>
                         <td className="px-3 py-2.5">
-                          <Badge variant={r.passed ? "success" : "danger"}>
-                            {r.passed ? "PASS" : "FAIL"}
-                          </Badge>
+                          <StatusChip status={r.passed ? "PASS" : "FAIL"} />
                         </td>
                         <td className="px-3 py-2.5 tabular-nums">
                           {formatDuration(r.timeTakenSeconds)}

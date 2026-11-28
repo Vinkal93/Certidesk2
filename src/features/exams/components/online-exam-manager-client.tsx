@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { StatusChip } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveFormModal } from "@/components/ui/responsive-form-modal";
 import type { BatchRecord, CourseRecord } from "@/types/academic";
@@ -608,17 +608,7 @@ export function OnlineExamManagerClient({
                           {new Date(ex.windowEndAt).toLocaleString()}
                         </p>
                       </div>
-                      <Badge
-                        variant={
-                          ex.status === "published" || ex.status === "results_declared"
-                            ? "success"
-                            : ex.status === "cancelled"
-                              ? "danger"
-                              : "outline"
-                        }
-                      >
-                        {ex.status.replace(/_/g, " ")}
-                      </Badge>
+                      <StatusChip status={ex.status} />
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">

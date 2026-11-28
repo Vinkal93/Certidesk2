@@ -8,7 +8,7 @@ import {
   getInstituteStudentById,
   getInstituteStudentInsights,
 } from "@/services/student.service";
-import { Badge } from "@/components/ui/badge";
+import { Badge, StatusChip } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StudentDetailClient } from "@/features/students/components/student-detail-client";
 
@@ -55,17 +55,7 @@ export default async function InstituteStudentProfilePage({
           <div className="mt-2 flex flex-wrap items-center gap-2.5">
             <h2 className="text-foreground text-xl font-bold">{student.fullName}</h2>
             <Badge variant="outline">{student.studentCode}</Badge>
-            <Badge
-              variant={
-                student.status === "active"
-                  ? "success"
-                  : student.status === "deleted"
-                    ? "danger"
-                    : "warning"
-              }
-            >
-              {student.status}
-            </Badge>
+            <StatusChip status={student.status} />
           </div>
           <p className="text-muted mt-1 text-xs">
             {student.courseName} · {student.batchName} · Admitted {student.admissionDate}
@@ -134,21 +124,7 @@ export default async function InstituteStudentProfilePage({
               <IndianRupee className="text-primary h-4 w-4" aria-hidden="true" />
               Fee Details &amp; Monthly Schedule
             </CardTitle>
-            {feeBreakdown ? (
-              <Badge
-                variant={
-                  feeBreakdown.overallStatus === "PAID"
-                    ? "success"
-                    : feeBreakdown.overallStatus === "OVERDUE"
-                      ? "danger"
-                      : feeBreakdown.overallStatus === "DUE"
-                        ? "warning"
-                        : "primary"
-                }
-              >
-                {feeBreakdown.overallStatus}
-              </Badge>
-            ) : null}
+            {feeBreakdown ? <StatusChip status={feeBreakdown.overallStatus} /> : null}
           </CardHeader>
           <CardContent className="space-y-4 text-xs">
             {!feePlan ? (
@@ -208,19 +184,7 @@ export default async function InstituteStudentProfilePage({
                               ₹{(inst.pendingPaise / 100).toFixed(0)}
                             </td>
                             <td className="px-2.5 py-2">
-                              <Badge
-                                variant={
-                                  inst.status === "PAID"
-                                    ? "success"
-                                    : inst.status === "OVERDUE"
-                                      ? "danger"
-                                      : inst.status === "DUE"
-                                        ? "warning"
-                                        : "primary"
-                                }
-                              >
-                                {inst.status}
-                              </Badge>
+                              <StatusChip status={inst.status} />
                             </td>
                           </tr>
                         ))}
@@ -323,17 +287,7 @@ export default async function InstituteStudentProfilePage({
                       <tr key={att.id}>
                         <td className="px-2.5 py-2 font-medium">{att.date}</td>
                         <td className="px-2.5 py-2">
-                          <Badge
-                            variant={
-                              att.status === "present"
-                                ? "success"
-                                : att.status === "absent"
-                                  ? "danger"
-                                  : "warning"
-                            }
-                          >
-                            {att.status}
-                          </Badge>
+                          <StatusChip status={att.status} />
                         </td>
                         <td className="text-muted px-2.5 py-2">{att.batchName || "—"}</td>
                       </tr>
