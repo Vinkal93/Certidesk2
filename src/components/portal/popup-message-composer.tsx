@@ -111,6 +111,68 @@ export function PopupMessageComposer({ mode, targets, initialSent }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {mode === "institute_admin" && (
+            <div className="mb-3 space-y-1.5">
+              <p className="text-muted text-[11px] font-semibold uppercase">
+                Quick Templates
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  {
+                    label: "Fee Reminder",
+                    category: "fee_reminder" as PopupMessageCategory,
+                    title: "Monthly Fee Due Reminder",
+                    message:
+                      "Dear Student, please clear your pending monthly tuition fee by the 10th of this month to avoid overdue status. Check your Fee Summary for exact due details.",
+                    ctaLabel: "View Fee Details",
+                    ctaHref: "/student/fees",
+                  },
+                  {
+                    label: "Exam Notice",
+                    category: "exam_notice" as PopupMessageCategory,
+                    title: "Upcoming Examination Schedule",
+                    message:
+                      "Your upcoming assessment/online exam schedule has been published. Please review your exam window and syllabus in the Examinations portal.",
+                    ctaLabel: "Open Online Exams",
+                    ctaHref: "/student/exams",
+                  },
+                  {
+                    label: "Study Material",
+                    category: "announcement" as PopupMessageCategory,
+                    title: "New Study Material Uploaded",
+                    message:
+                      "New notes, practice links, and reference documents have been added to your Study Material section.",
+                    ctaLabel: "Open Study Material",
+                    ctaHref: "/student/study-material",
+                  },
+                  {
+                    label: "Batch Timing",
+                    category: "announcement" as PopupMessageCategory,
+                    title: "Class & Batch Timing Update",
+                    message:
+                      "Please note that your upcoming batch schedule has an important timing update. Check your Course & Batch page for details.",
+                    ctaLabel: "View Batch Info",
+                    ctaHref: "/student/course",
+                  },
+                ].map((tpl) => (
+                  <button
+                    key={tpl.label}
+                    type="button"
+                    onClick={() => {
+                      setCategory(tpl.category);
+                      setTitle(tpl.title);
+                      setMessage(tpl.message);
+                      setCtaLabel(tpl.ctaLabel);
+                      setCtaHref(tpl.ctaHref);
+                    }}
+                    className="border-border bg-surface hover:border-primary/60 hover:text-primary cursor-pointer rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors"
+                  >
+                    {tpl.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-3">
             {error && (
               <p className="bg-danger-soft text-danger rounded-lg p-2.5 text-xs">

@@ -36,6 +36,7 @@ export const studentNavGroups: StudentNavGroup[] = [
     title: "ACADEMICS",
     items: [
       { label: "Course & Batch", href: "/student/course", icon: "bookOpen" },
+      { label: "Study Material", href: "/student/study-material", icon: "bookOpen" },
       { label: "Attendance", href: "/student/attendance", icon: "calendarCheck" },
       { label: "Examinations", href: "/student/examinations", icon: "fileSpreadsheet" },
       { label: "Online Exams", href: "/student/exams", icon: "clipboardCheck" },
@@ -67,6 +68,7 @@ export const studentRouteTitles: Record<string, string> = {
   "/student/dashboard": "Student Dashboard",
   "/student/profile": "My Profile",
   "/student/course": "Course & Batch",
+  "/student/study-material": "Study Material",
   "/student/attendance": "Attendance",
   "/student/examinations": "Examinations",
   "/student/results": "Published Results",

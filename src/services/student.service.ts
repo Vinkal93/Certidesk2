@@ -321,6 +321,9 @@ export async function admitStudent(
       updatedAt: now,
     };
 
+    let admittedCourse: CourseRecord | undefined;
+    let admittedBatch: BatchRecord | undefined;
+
     const debitTx = await db.runTransaction(async (tx) => {
       const instRef = institutesCollection().doc(institute.id);
       const instSnap = await tx.get(instRef);
@@ -336,13 +339,15 @@ export async function admitStudent(
           tx.get(courseRef),
           tx.get(batchRef),
         ]);
-        const { batch } = validateCourseAndBatchRelationship({
+        const validated = validateCourseAndBatchRelationship({
           instituteId: institute.id,
           course: courseSnap.data() as CourseRecord | undefined,
           batch: batchSnap.data() as BatchRecord | undefined,
         });
+        admittedCourse = validated.course;
+        admittedBatch = validated.batch;
         tx.update(batchRef, {
-          enrolledCount: (batch.enrolledCount ?? 0) + 1,
+          enrolledCount: (validated.batch.enrolledCount ?? 0) + 1,
           updatedAt: now,
         });
       }
@@ -405,6 +410,30 @@ export async function admitStudent(
         balanceAfterPaise: debitTx.balanceAfterPaise,
       },
     });
+
+    // Send automatic Welcome Popup Notification with course, fee & due-date details
+    const { sendInstitutePopupMessage } = await import("./popup-messages.service");
+    const courseLabel = admittedCourse?.name ?? input.courseName;
+    const batchLabel = admittedBatch?.name ?? input.batchName;
+    const durationLabel = admittedCourse?.duration ? `, ${admittedCourse.duration}` : "";
+    const feeSummary = admittedCourse
+      ? ` Total Course Fee: ₹${(admittedCourse.feePaise / 100).toFixed(0)}${
+          admittedCourse.monthlyFeePaise
+            ? ` (₹${(admittedCourse.monthlyFeePaise / 100).toFixed(0)}/month for ${
+                admittedCourse.durationMonths ?? admittedCourse.duration
+              })`
+            : ""
+        }.`
+      : "";
+    await sendInstitutePopupMessage(actor, {
+      targetType: "student",
+      studentId,
+      category: "announcement",
+      title: `Welcome to ${institute.name}, ${input.fullName.trim()}!`,
+      message: `Your admission is confirmed for ${courseLabel} (${batchLabel}${durationLabel}).${feeSummary} Fee Rule: Monthly installments are due by the 10th of each month; past unpaid months show as Overdue, current month as Due, and future months as Upcoming.`,
+      ctaLabel: "View Your Details",
+      ctaHref: "/student/fees",
+    }).catch(() => undefined);
 
     return {
       student: studentRecord,

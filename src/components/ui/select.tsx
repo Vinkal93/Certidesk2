@@ -45,12 +45,12 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function 
           aria-invalid={error ? true : undefined}
           aria-describedby={errorId ?? helperId}
           className={cn(
-            "bg-background text-foreground flex h-10 w-full appearance-none rounded-lg border py-2 pr-9 pl-3 text-sm transition-colors duration-150",
-            "focus-visible:outline-primary focus-visible:outline-2 focus-visible:outline-offset-0",
+            "bg-background text-foreground flex h-10 w-full cursor-pointer appearance-none rounded-lg border py-2 pr-9 pl-3 text-sm shadow-2xs transition-all duration-150",
+            "focus-visible:border-primary focus-visible:ring-primary/20 focus-visible:ring-3 focus-visible:outline-none",
             "disabled:bg-surface disabled:cursor-not-allowed disabled:opacity-60",
             error
-              ? "border-danger focus-visible:outline-danger"
-              : "border-border hover:border-slate-300",
+              ? "border-danger focus-visible:ring-danger/20"
+              : "border-border hover:border-primary/60 hover:bg-surface/40",
             className
           )}
           {...props}
