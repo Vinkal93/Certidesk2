@@ -38,7 +38,6 @@ export function AccountsLedgerClient({
   const [description, setDescription] = React.useState("");
   const [vendorOrPayee, setVendorOrPayee] = React.useState("");
   const [amountRupees, setAmountRupees] = React.useState("");
-  const [paymentMethod, setPaymentMethod] = React.useState<FeePaymentMethod>("cash");
   const [accountId, setAccountId] = React.useState(accounts[0]?.id ?? "");
   const [toAccountId, setToAccountId] = React.useState(accounts[1]?.id ?? "");
   const [categoryId, setCategoryId] = React.useState("");
@@ -407,6 +406,13 @@ export function AccountsLedgerClient({
                 onSubmit={(e) => {
                   e.preventDefault();
                   const cat = filteredCats.find((c) => c.id === categoryId);
+                  const selectedAcc = accounts.find((a) => a.id === accountId);
+                  const derivedMethod: FeePaymentMethod =
+                    selectedAcc?.accountType === "upi"
+                      ? "upi"
+                      : selectedAcc?.accountType === "bank"
+                        ? "bank_transfer"
+                        : "cash";
                   void postAction(
                     {
                       action: "record_entry",
@@ -419,7 +425,7 @@ export function AccountsLedgerClient({
                       description,
                       vendorOrPayee: vendorOrPayee || undefined,
                       amountRupees: Number(amountRupees),
-                      paymentMethod,
+                      paymentMethod: derivedMethod,
                       accountId,
                       reference: reference || undefined,
                     },
@@ -473,29 +479,21 @@ export function AccountsLedgerClient({
                     onChange={(e) => setVendorOrPayee(e.target.value)}
                   />
                 ) : null}
-                <div className="grid grid-cols-2 gap-3">
-                  <Select
-                    label="Method"
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as FeePaymentMethod)}
-                    options={[
-                      { label: "Cash", value: "cash" },
-                      { label: "UPI", value: "upi" },
-                      { label: "Bank Transfer", value: "bank_transfer" },
-                      { label: "Card", value: "card" },
-                    ]}
-                  />
-                  <Select
-                    label="Account"
-                    value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    options={
-                      accounts.length === 0
-                        ? [{ label: "Create account first", value: "" }]
-                        : accounts.map((a) => ({ label: a.name, value: a.id }))
-                    }
-                  />
-                </div>
+                <Select
+                  label="Account (Cash / Bank)"
+                  value={accountId}
+                  onChange={(e) => setAccountId(e.target.value)}
+                  options={
+                    accounts.length === 0
+                      ? [{ label: "Create account first", value: "" }]
+                      : accounts
+                          .filter((a) => a.status === "active")
+                          .map((a) => ({
+                            label: `${a.name} (${a.accountType.toUpperCase()})`,
+                            value: a.id,
+                          }))
+                  }
+                />
                 <Input
                   label="Reference (optional)"
                   value={reference}

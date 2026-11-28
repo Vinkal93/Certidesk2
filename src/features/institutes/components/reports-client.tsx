@@ -1,21 +1,24 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Award,
   BarChart3,
   BookOpen,
   CalendarCheck,
   Download,
+  ExternalLink,
   GraduationCap,
   IndianRupee,
   Printer,
   TrendingUp,
 } from "lucide-react";
 import { Select } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ResponsiveFormModal } from "@/components/ui/responsive-form-modal";
 
 export interface ReportSummaryRow {
   category: string;
@@ -67,6 +70,13 @@ export function ReportsClient({
     from: null,
     to: null,
   });
+  const [activeKpiModal, setActiveKpiModal] = React.useState<{
+    title: string;
+    category: string;
+    href: string;
+    hrefLabel: string;
+    summary: string;
+  } | null>(null);
 
   const categories = Array.from(new Set(rows.map((r) => r.category)));
   const filtered =
@@ -208,9 +218,20 @@ export function ReportsClient({
         </div>
       </div>
 
-      {/* KPI Summary Cards */}
+      {/* KPI Summary Cards — Click any card for detailed popup */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Card>
+        <Card
+          onClick={() =>
+            setActiveKpiModal({
+              title: "Students Overview",
+              category: "Students",
+              href: "/institute/students",
+              hrefLabel: "Open Student Directory",
+              summary: `${rangeMetrics.rangeAdmissions} students in selected range · ${analytics.kpis.activeStudents} active overall.`,
+            })
+          }
+          className="hover:border-primary/60 cursor-pointer transition-all hover:shadow-sm"
+        >
           <CardContent className="p-4">
             <div className="text-muted flex items-center gap-1.5 text-xs font-medium">
               <GraduationCap className="text-primary h-3.5 w-3.5" aria-hidden="true" />
@@ -225,7 +246,18 @@ export function ReportsClient({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() =>
+            setActiveKpiModal({
+              title: "Courses & Batches",
+              category: "Courses & Batches",
+              href: "/institute/courses",
+              hrefLabel: "Manage Courses",
+              summary: `${analytics.kpis.totalCourses} courses · ${analytics.kpis.activeBatches} active batches.`,
+            })
+          }
+          className="hover:border-primary/60 cursor-pointer transition-all hover:shadow-sm"
+        >
           <CardContent className="p-4">
             <div className="text-muted flex items-center gap-1.5 text-xs font-medium">
               <BookOpen className="text-primary h-3.5 w-3.5" aria-hidden="true" />
@@ -240,7 +272,18 @@ export function ReportsClient({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() =>
+            setActiveKpiModal({
+              title: "Fee Collection Details",
+              category: "Fee Collection",
+              href: "/institute/finance",
+              hrefLabel: "Open Financial Dashboard",
+              summary: `Collected ${formatInr(rangeMetrics.rangeCollectionPaise)} in selected period.`,
+            })
+          }
+          className="hover:border-primary/60 cursor-pointer transition-all hover:shadow-sm"
+        >
           <CardContent className="p-4">
             <div className="text-muted flex items-center gap-1.5 text-xs font-medium">
               <IndianRupee className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
@@ -255,7 +298,18 @@ export function ReportsClient({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() =>
+            setActiveKpiModal({
+              title: "Pending Fee Dues",
+              category: "Pending Fees",
+              href: "/institute/fees/dues",
+              hrefLabel: "View Fee Dues",
+              summary: `Total pending student fee balance: ${formatInr(analytics.kpis.pendingDuesPaise)}.`,
+            })
+          }
+          className="hover:border-primary/60 cursor-pointer transition-all hover:shadow-sm"
+        >
           <CardContent className="p-4">
             <div className="text-muted flex items-center gap-1.5 text-xs font-medium">
               <IndianRupee className="text-warning h-3.5 w-3.5" aria-hidden="true" />
@@ -268,7 +322,18 @@ export function ReportsClient({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() =>
+            setActiveKpiModal({
+              title: "Attendance Breakdown",
+              category: "Attendance",
+              href: "/institute/attendance",
+              hrefLabel: "Open Attendance",
+              summary: `${attendancePct}% rate · Present: ${analytics.kpis.attendancePresent}, Absent: ${analytics.kpis.attendanceAbsent}, Leave: ${analytics.kpis.attendanceLeave}.`,
+            })
+          }
+          className="hover:border-primary/60 cursor-pointer transition-all hover:shadow-sm"
+        >
           <CardContent className="p-4">
             <div className="text-muted flex items-center gap-1.5 text-xs font-medium">
               <CalendarCheck className="text-primary h-3.5 w-3.5" aria-hidden="true" />
@@ -281,7 +346,18 @@ export function ReportsClient({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() =>
+            setActiveKpiModal({
+              title: "Certificates & Exams",
+              category: "Certificates",
+              href: "/institute/certificates",
+              hrefLabel: "Open Certificates",
+              summary: `${analytics.kpis.totalCertificates} certificates issued · ${analytics.kpis.upcomingExams} upcoming exams.`,
+            })
+          }
+          className="hover:border-primary/60 cursor-pointer transition-all hover:shadow-sm"
+        >
           <CardContent className="p-4">
             <div className="text-muted flex items-center gap-1.5 text-xs font-medium">
               <Award className="text-primary h-3.5 w-3.5" aria-hidden="true" />
@@ -426,6 +502,57 @@ export function ReportsClient({
           </div>
         </CardContent>
       </Card>
+
+      <ResponsiveFormModal
+        open={Boolean(activeKpiModal)}
+        onClose={() => setActiveKpiModal(null)}
+        title={activeKpiModal?.title ?? "Report Details"}
+        subtitle={activeKpiModal?.summary ?? ""}
+      >
+        {activeKpiModal && (
+          <div className="space-y-4">
+            <div className="border-border overflow-x-auto rounded-xl border">
+              <table className="w-full text-left text-xs">
+                <thead className="border-border bg-surface text-muted border-b">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold">Metric</th>
+                    <th className="px-3 py-2 font-semibold">Value</th>
+                    <th className="px-3 py-2 font-semibold">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-border divide-y">
+                  {rows
+                    .filter((r) => r.category === activeKpiModal.category)
+                    .map((r) => (
+                      <tr key={r.metric}>
+                        <td className="px-3 py-2 font-medium">{r.metric}</td>
+                        <td className="text-primary px-3 py-2 font-bold">{r.value}</td>
+                        <td className="text-muted px-3 py-2">{r.detail}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setActiveKpiModal(null)}
+              >
+                Close
+              </Button>
+              <Link
+                href={activeKpiModal.href}
+                className={buttonVariants({ variant: "primary", size: "sm" })}
+              >
+                {activeKpiModal.hrefLabel}
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
+        )}
+      </ResponsiveFormModal>
     </div>
   );
 }

@@ -55,6 +55,12 @@ export const instituteNavGroups: InstituteNavGroup[] = [
         requiredPermission: "courses:read",
       },
       {
+        label: "Study Material",
+        href: "/institute/study-material",
+        icon: "bookOpen",
+        requiredPermission: "courses:read",
+      },
+      {
         label: "Batches",
         href: "/institute/batches",
         icon: "layers",
