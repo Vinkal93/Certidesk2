@@ -97,17 +97,17 @@ export function StudentsDirectoryClient({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="flex-1">
+      <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-row sm:items-end sm:gap-3">
+        <div className="col-span-1 sm:flex-1">
           <Input
             label="Search Students"
-            placeholder="Name, Student ID, email, course, or batch..."
+            placeholder="Name, ID, email, course..."
             leftAddon={<Search className="h-4 w-4" aria-hidden="true" />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="w-full sm:w-40">
+        <div className="col-span-1 sm:w-40">
           <Select
             label="Status"
             value={status}
@@ -125,12 +125,14 @@ export function StudentsDirectoryClient({
         <Button
           variant="outline"
           loading={loading}
+          className="w-full sm:w-auto"
           onClick={() => fetchStudents(1, search, status)}
         >
           Apply
         </Button>
         <Button
           variant="outline"
+          className="w-full sm:w-auto"
           leftIcon={<Download className="h-4 w-4" aria-hidden="true" />}
           onClick={exportCsv}
           disabled={items.length === 0}
