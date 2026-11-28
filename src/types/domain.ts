@@ -1,7 +1,7 @@
 import type { StaffPermission, UserRole } from "./auth";
 
 export type InstituteStatus = "active" | "suspended";
-export type StudentStatus = "active" | "disabled";
+export type StudentStatus = "active" | "disabled" | "deleted";
 export type OnboardingStatus = "registered" | "verified" | "wallet_skipped" | "completed";
 export type SpendOrderPolicy = "bonus_first" | "paid_first";
 
@@ -86,6 +86,9 @@ export interface StudentRecord {
   batchName: string;
   status: StudentStatus;
   mustChangePassword: boolean;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+  deletionReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -208,8 +211,16 @@ export type AuditAction =
   | "STUDENT_ADMISSION_FAILED"
   | "STUDENT_UPDATED"
   | "STUDENT_DELETED"
+  | "STUDENT_RESTORED"
   | "STUDENT_STATUS_CHANGED"
   | "STUDENT_ACCESS_RESET"
+  | "COURSE_CREATED"
+  | "COURSE_UPDATED"
+  | "COURSE_DELETED"
+  | "COURSE_RESTORED"
+  | "FEE_RECEIPT_REVERSED"
+  | "QUESTION_DELETED"
+  | "QUESTION_IMPORTED"
   | "WALLET_CREDITED"
   | "WALLET_BONUS_CREDITED"
   | "WALLET_DEBITED"

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   CheckCircle2,
+  Clock,
   Laptop,
   LogOut,
   RefreshCw,
@@ -18,12 +19,16 @@ import { Button } from "@/components/ui/button";
 interface ActiveDeviceSession {
   id: string;
   device: string;
+  os?: string;
   browser: string;
   isMobile: boolean;
   ipAddress: string;
   createdAt: string;
   lastVerifiedAt: string;
   expiresAt: string;
+  status?: "active" | "revoked" | "expired";
+  revokedAt?: string | null;
+  revokeReason?: string | null;
   isCurrent: boolean;
 }
 
@@ -35,7 +40,9 @@ export function ManageDevicesModal({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const [tab, setTab] = React.useState<"active" | "history">("active");
   const [sessions, setSessions] = React.useState<ActiveDeviceSession[]>([]);
+  const [history, setHistory] = React.useState<ActiveDeviceSession[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -44,12 +51,14 @@ export function ManageDevicesModal({
   const refreshSessions = React.useCallback(async () => {
     setLoading(true);
     setError(null);
-    setMessage(null);
     try {
       const res = await fetch("/api/auth/sessions", { cache: "no-store" });
       const json = (await res.json()) as {
         ok: boolean;
-        data?: { sessions: ActiveDeviceSession[] };
+        data?: {
+          sessions: ActiveDeviceSession[];
+          history?: ActiveDeviceSession[];
+        };
         error?: { message?: string };
       };
       if (!res.ok || !json.ok || !json.data) {
@@ -57,6 +66,7 @@ export function ManageDevicesModal({
         return;
       }
       setSessions(json.data.sessions);
+      if (json.data.history) setHistory(json.data.history);
     } catch {
       setError("Network error while loading active devices.");
     } finally {
@@ -64,32 +74,43 @@ export function ManageDevicesModal({
     }
   }, []);
 
+  // Real-time synchronization: initial fetch + 4-second live polling while open
   React.useEffect(() => {
     if (!open) return;
     let active = true;
-    fetch("/api/auth/sessions", { cache: "no-store" })
-      .then((res) => res.json())
-      .then(
-        (json: {
-          ok: boolean;
-          data?: { sessions: ActiveDeviceSession[] };
-          error?: { message?: string };
-        }) => {
-          if (!active) return;
-          if (!json.ok || !json.data) {
-            setError(json.error?.message ?? "Unable to load active devices.");
-            return;
+
+    const sync = () => {
+      fetch("/api/auth/sessions", { cache: "no-store" })
+        .then((res) => res.json())
+        .then(
+          (json: {
+            ok: boolean;
+            data?: {
+              sessions: ActiveDeviceSession[];
+              history?: ActiveDeviceSession[];
+            };
+            error?: { message?: string };
+          }) => {
+            if (!active) return;
+            if (!json.ok || !json.data) {
+              setError(json.error?.message ?? "Unable to load active devices.");
+              return;
+            }
+            setError(null);
+            setSessions(json.data.sessions);
+            if (json.data.history) setHistory(json.data.history);
           }
-          setError(null);
-          setMessage(null);
-          setSessions(json.data.sessions);
-        }
-      )
-      .catch(() => {
-        if (active) setError("Network error while loading active devices.");
-      });
+        )
+        .catch(() => {
+          if (active) setError("Network error while loading active devices.");
+        });
+    };
+
+    sync();
+    const timer = setInterval(sync, 4000);
     return () => {
       active = false;
+      clearInterval(timer);
     };
   }, [open]);
 
@@ -119,7 +140,8 @@ export function ManageDevicesModal({
         return;
       }
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-      setMessage("Device signed out successfully.");
+      setMessage("Device signed out and server session invalidated.");
+      void refreshSessions();
     } catch {
       setError("Network error while signing out device.");
     } finally {
@@ -146,6 +168,7 @@ export function ManageDevicesModal({
       setMessage(
         `Signed out ${json.data?.revokedCount ?? 0} other device(s). This device stays logged in.`
       );
+      void refreshSessions();
     } catch {
       setError("Network error while signing out other devices.");
     } finally {
@@ -154,6 +177,7 @@ export function ManageDevicesModal({
   }
 
   const otherCount = sessions.filter((s) => !s.isCurrent).length;
+  const displayed = tab === "active" ? sessions : history;
 
   return (
     <div
@@ -177,7 +201,7 @@ export function ManageDevicesModal({
                 Manage Active Devices
               </h2>
               <p className="text-muted text-xs">
-                Signing out a device only ends that device&apos;s session.
+                Live-synced across browsers &amp; devices (auto-updates every 4s).
               </p>
             </div>
           </div>
@@ -204,6 +228,33 @@ export function ManageDevicesModal({
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="border-border mt-3 flex gap-2 border-b pb-2.5 text-xs">
+          <button
+            type="button"
+            onClick={() => setTab("active")}
+            className={`cursor-pointer rounded-lg px-3 py-1.5 font-semibold transition-colors ${
+              tab === "active"
+                ? "bg-primary text-white"
+                : "text-muted hover:bg-surface hover:text-foreground"
+            }`}
+          >
+            Active Devices ({sessions.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("history")}
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-colors ${
+              tab === "history"
+                ? "bg-primary text-white"
+                : "text-muted hover:bg-surface hover:text-foreground"
+            }`}
+          >
+            <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+            Login History ({history.length})
+          </button>
+        </div>
+
         {error && (
           <div className="bg-danger-soft text-danger mt-3 flex items-start gap-2 rounded-lg border border-red-200 p-3 text-xs dark:border-red-800/60">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -219,16 +270,16 @@ export function ManageDevicesModal({
         )}
 
         <div className="mt-4 space-y-2.5">
-          {loading && sessions.length === 0 ? (
+          {loading && displayed.length === 0 ? (
             <p className="text-muted py-6 text-center text-xs">
-              Loading active device sessions...
+              Loading device sessions...
             </p>
-          ) : sessions.length === 0 ? (
+          ) : displayed.length === 0 ? (
             <p className="text-muted py-6 text-center text-xs">
-              No active device sessions found.
+              No device sessions found.
             </p>
           ) : (
-            sessions.map((s) => (
+            displayed.map((s) => (
               <div
                 key={s.id}
                 className="border-border bg-surface flex items-center justify-between gap-3 rounded-xl border p-3.5"
@@ -242,28 +293,39 @@ export function ManageDevicesModal({
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <p className="text-foreground truncate text-sm font-semibold">
                         {s.device} · {s.browser}
                       </p>
-                      {s.isCurrent && <Badge variant="success">This Device</Badge>}
+                      {s.isCurrent && <Badge variant="success">Current Device</Badge>}
+                      {s.os && <Badge variant="outline">{s.os}</Badge>}
+                      {tab === "history" && s.status && s.status !== "active" && (
+                        <Badge variant="danger">{s.status}</Badge>
+                      )}
                     </div>
                     <p className="text-muted mt-0.5 text-[11px]">
                       IP: {s.ipAddress} · Last active:{" "}
                       {s.lastVerifiedAt.slice(0, 16).replace("T", " ")}
                     </p>
+                    {tab === "history" && s.revokeReason && (
+                      <p className="text-muted mt-0.5 text-[11px]">
+                        Note: {s.revokeReason}
+                      </p>
+                    )}
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  loading={busyId === s.id}
-                  onClick={() => void handleRevoke(s.id)}
-                  leftIcon={<LogOut className="h-3.5 w-3.5" aria-hidden="true" />}
-                >
-                  {s.isCurrent ? "Sign Out" : "Remove"}
-                </Button>
+                {s.status !== "revoked" && s.status !== "expired" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    loading={busyId === s.id}
+                    onClick={() => void handleRevoke(s.id)}
+                    leftIcon={<LogOut className="h-3.5 w-3.5" aria-hidden="true" />}
+                  >
+                    {s.isCurrent ? "Sign Out" : "Revoke"}
+                  </Button>
+                )}
               </div>
             ))
           )}

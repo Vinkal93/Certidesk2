@@ -41,6 +41,10 @@ export interface FeeReceiptRecord {
   issuedByUid: string;
   status: "issued" | "cancelled";
   issuedAt: string;
+  reversalRef?: string | null;
+  reversedAt?: string | null;
+  reversedByUid?: string | null;
+  reversalReason?: string | null;
 }
 
 export interface FeeRefundRecord {

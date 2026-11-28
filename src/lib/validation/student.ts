@@ -35,6 +35,7 @@ export const updateStudentSchema = z.object({
 export const studentActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("activate") }),
   z.object({ action: z.literal("disable") }),
+  z.object({ action: z.literal("restore") }),
   z.object({ action: z.literal("reset_password") }),
 ]);
 

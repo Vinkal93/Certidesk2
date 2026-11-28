@@ -1,4 +1,5 @@
-export type QuestionType = "single_mcq" | "multi_mcq";
+export type QuestionType =
+  "single_mcq" | "multi_mcq" | "true_false" | "fill_blank" | "short_answer";
 export type QuestionDifficulty = "easy" | "medium" | "hard";
 
 export interface QuestionOption {
@@ -10,16 +11,23 @@ export interface QuestionBankRecord {
   id: string;
   instituteId: string;
   questionText: string;
+  imageUrl?: string;
   questionType: QuestionType;
   subject: string;
   topic: string;
+  courseName?: string;
+  language?: string;
   difficulty: QuestionDifficulty;
   options: QuestionOption[];
   correctOptionIds: string[];
+  correctText?: string;
   marks: number;
   negativeMarks: number;
   explanation: string;
-  status: "active" | "archived";
+  status: "active" | "archived" | "deleted";
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+  deletionReason?: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

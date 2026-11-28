@@ -4,10 +4,11 @@ import { createCourseSchema } from "@/lib/validation/academic";
 import { createCourse, listCourses } from "@/services/academic.service";
 import { handleApiError, jsonError, jsonOk } from "@/lib/utils/api-response";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const actor = await requireSessionUser("institute");
-    const courses = await listCourses(actor);
+    const includeDeleted = request.nextUrl.searchParams.get("includeDeleted") === "1";
+    const courses = await listCourses(actor, includeDeleted);
     return jsonOk({ courses });
   } catch (error) {
     return handleApiError(error);

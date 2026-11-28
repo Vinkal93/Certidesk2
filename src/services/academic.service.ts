@@ -68,14 +68,36 @@ export function validateCourseAndBatchRelationship(params: {
   return { course, batch };
 }
 
-export async function listCourses(actor: SessionUser): Promise<CourseRecord[]> {
+export async function listCourses(
+  actor: SessionUser,
+  includeDeleted = false
+): Promise<CourseRecord[]> {
   if (!hasStaffPermission(actor, "courses:read")) {
     throw new AuthError(403, "FORBIDDEN", "Missing courses:read permission.");
   }
   const institute = await resolveAuthorizedInstitute(actor);
-  const snap = await coursesCol().where("instituteId", "==", institute.id).get();
+  const [snap, studentsSnap] = await Promise.all([
+    coursesCol().where("instituteId", "==", institute.id).get(),
+    studentsCollection().where("instituteId", "==", institute.id).get(),
+  ]);
+
+  const countByCourse = new Map<string, number>();
+  for (const doc of studentsSnap.docs) {
+    const st = doc.data();
+    if (st.status !== "deleted" && st.courseId) {
+      countByCourse.set(st.courseId, (countByCourse.get(st.courseId) ?? 0) + 1);
+    }
+  }
+
   return snap.docs
-    .map((d) => d.data())
+    .map((d) => {
+      const data = d.data();
+      return {
+        ...data,
+        enrolledCount: countByCourse.get(data.id) ?? 0,
+      };
+    })
+    .filter((c) => includeDeleted || c.status !== "deleted")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -115,6 +137,20 @@ export async function createCourse(
     throw new AuthError(403, "FORBIDDEN", "Missing courses:write permission.");
   }
   const institute = await resolveAuthorizedInstitute(actor);
+  const normalizedCode = input.code.trim().toUpperCase();
+  const existingSnap = await coursesCol()
+    .where("instituteId", "==", institute.id)
+    .where("code", "==", normalizedCode)
+    .get();
+  const hasDuplicate = existingSnap.docs.some((d) => d.data().status !== "deleted");
+  if (hasDuplicate) {
+    throw new AuthError(
+      409,
+      "DUPLICATE_COURSE_CODE",
+      `Course code "${normalizedCode}" already exists in your institute. Edit the existing course instead.`
+    );
+  }
+
   const id = generateId("CRS");
   const now = new Date().toISOString();
   const feeFields = computeCourseFeeFields(input);
@@ -123,7 +159,7 @@ export async function createCourse(
     id,
     instituteId: institute.id,
     name: input.name,
-    code: input.code.toUpperCase(),
+    code: normalizedCode,
     duration: input.duration,
     ...feeFields,
     description: input.description,
@@ -134,7 +170,15 @@ export async function createCourse(
   };
 
   await coursesCol().doc(id).set(record);
-  return record;
+  await recordAuditLog({
+    action: "COURSE_CREATED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: institute.id,
+    targetId: id,
+    metadata: { code: normalizedCode, name: input.name },
+  });
+  return { ...record, enrolledCount: 0 };
 }
 
 export async function updateCourse(
@@ -154,12 +198,27 @@ export async function updateCourse(
     throw new AuthError(404, "COURSE_NOT_FOUND", "Course not found.");
   }
 
+  const normalizedCode = input.code.trim().toUpperCase();
+  if (normalizedCode !== existing.code) {
+    const dupSnap = await coursesCol()
+      .where("instituteId", "==", institute.id)
+      .where("code", "==", normalizedCode)
+      .get();
+    if (dupSnap.docs.some((d) => d.id !== courseId && d.data().status !== "deleted")) {
+      throw new AuthError(
+        409,
+        "DUPLICATE_COURSE_CODE",
+        `Course code "${normalizedCode}" is already used by another course.`
+      );
+    }
+  }
+
   const feeFields = computeCourseFeeFields(input);
 
   const updated: CourseRecord = {
     ...existing,
     name: input.name,
-    code: input.code.toUpperCase(),
+    code: normalizedCode,
     duration: input.duration,
     ...feeFields,
     description: input.description,
@@ -169,7 +228,134 @@ export async function updateCourse(
   };
 
   await ref.set(updated);
+  await recordAuditLog({
+    action: "COURSE_UPDATED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: institute.id,
+    targetId: courseId,
+    metadata: { code: normalizedCode, name: input.name },
+  });
   return updated;
+}
+
+export async function deleteCourse(
+  actor: SessionUser,
+  courseId: string,
+  reason: string,
+  force = false
+): Promise<{
+  deleted: boolean;
+  courseId: string;
+  dependencies: { students: number; batches: number };
+}> {
+  if (!hasStaffPermission(actor, "courses:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing courses:write permission.");
+  }
+  const institute = await resolveAuthorizedInstitute(actor);
+  const ref = coursesCol().doc(courseId);
+  const snap = await ref.get();
+  const existing = snap.data();
+
+  if (!snap.exists || !existing || existing.instituteId !== institute.id) {
+    throw new AuthError(404, "COURSE_NOT_FOUND", "Course not found.");
+  }
+
+  const [studentsSnap, batchesSnap] = await Promise.all([
+    studentsCollection()
+      .where("instituteId", "==", institute.id)
+      .where("courseId", "==", courseId)
+      .get(),
+    batchesCol()
+      .where("instituteId", "==", institute.id)
+      .where("courseId", "==", courseId)
+      .get(),
+  ]);
+
+  const activeStudents = studentsSnap.docs.filter(
+    (d) => d.data().status !== "deleted"
+  ).length;
+  const activeBatches = batchesSnap.docs.filter(
+    (d) => d.data().status !== "archived"
+  ).length;
+
+  if ((activeStudents > 0 || activeBatches > 0) && !force) {
+    throw new AuthError(
+      409,
+      "DEPENDENCY_CONFLICT",
+      `Cannot delete "${existing.name}": ${activeStudents} enrolled student(s) and ${activeBatches} active batch(es) depend on this course. Resolve dependencies or confirm forced soft-delete.`
+    );
+  }
+
+  const now = new Date().toISOString();
+  await ref.update({
+    status: "deleted",
+    deletedAt: now,
+    deletedBy: actor.uid,
+    deletionReason: reason.trim() || "Soft deleted by administrator",
+    updatedAt: now,
+  });
+
+  await recordAuditLog({
+    action: "COURSE_DELETED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: institute.id,
+    targetId: courseId,
+    metadata: {
+      code: existing.code,
+      name: existing.name,
+      reason: reason.trim(),
+      force,
+      activeStudents,
+      activeBatches,
+    },
+  });
+
+  return {
+    deleted: true,
+    courseId,
+    dependencies: { students: activeStudents, batches: activeBatches },
+  };
+}
+
+export async function restoreCourse(
+  actor: SessionUser,
+  courseId: string
+): Promise<CourseRecord> {
+  if (!hasStaffPermission(actor, "courses:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing courses:write permission.");
+  }
+  const institute = await resolveAuthorizedInstitute(actor);
+  const ref = coursesCol().doc(courseId);
+  const snap = await ref.get();
+  const existing = snap.data();
+
+  if (!snap.exists || !existing || existing.instituteId !== institute.id) {
+    throw new AuthError(404, "COURSE_NOT_FOUND", "Course not found.");
+  }
+
+  const now = new Date().toISOString();
+  const restored: CourseRecord = {
+    ...existing,
+    status: "active",
+    deletedAt: null,
+    deletedBy: null,
+    deletionReason: null,
+    updatedAt: now,
+  };
+  await ref.set(restored);
+
+  await recordAuditLog({
+    action: "COURSE_RESTORED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: institute.id,
+    targetId: courseId,
+    metadata: { code: existing.code, name: existing.name },
+  });
+
+  return restored;
 }
 
 export async function listBatches(actor: SessionUser): Promise<BatchRecord[]> {

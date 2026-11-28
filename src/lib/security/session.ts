@@ -173,6 +173,15 @@ export async function getSessionUser(): Promise<SessionUser | null> {
           }
           return null;
         }
+        const lastVerifiedMs = Date.parse(
+          sessionDoc.lastVerifiedAt || sessionDoc.createdAt
+        );
+        if (!Number.isFinite(lastVerifiedMs) || Date.now() - lastVerifiedMs > 60_000) {
+          void securitySessionsCollection()
+            .doc(sid)
+            .update({ lastVerifiedAt: new Date().toISOString() })
+            .catch(() => undefined);
+        }
       }
     }
 
