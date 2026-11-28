@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Building2, Layers, ShieldCheck, Sparkles } from "lucide-react";
 import { buildPublicMetadata } from "@/lib/seo/metadata";
+import { JsonLd, buildKnowledgeGraphJsonLd } from "@/components/seo/json-ld";
 import { PageContainer, SectionHeader } from "@/components/layout";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
@@ -45,6 +46,7 @@ const principles = [
 export default function AboutPage() {
   return (
     <PageContainer>
+      <JsonLd data={buildKnowledgeGraphJsonLd()} />
       <Section spacing="md" background="surface">
         <Container>
           <SectionHeader
@@ -88,13 +90,16 @@ export default function AboutPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
+              <Link
+                href="/vinkal-prajapati"
+                className={buttonVariants({ variant: "outline" })}
+              >
+                Meet Founder — Vinkal Prajapati
+              </Link>
               <Link href="/contact" className={buttonVariants({ variant: "outline" })}>
                 Contact Us
               </Link>
-              <Link
-                href="/get-started"
-                className={buttonVariants({ variant: "primary" })}
-              >
+              <Link href="/register" className={buttonVariants({ variant: "primary" })}>
                 Get Started
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>

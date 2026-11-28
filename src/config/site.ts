@@ -1,7 +1,9 @@
 import type { SiteConfig } from "@/types/site";
 
+const PRODUCTION_SITE_URL = "https://certidesk.sbci.online";
+
 function normalizeSiteUrl(raw: string | undefined): string {
-  if (!raw) return "http://localhost:3000";
+  if (!raw) return PRODUCTION_SITE_URL;
   let cleaned = raw.trim();
   if (
     (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
@@ -9,14 +11,18 @@ function normalizeSiteUrl(raw: string | undefined): string {
   ) {
     cleaned = cleaned.slice(1, -1).trim();
   }
-  if (!cleaned) return "http://localhost:3000";
+  if (!cleaned) return PRODUCTION_SITE_URL;
   if (!cleaned.startsWith("http://") && !cleaned.startsWith("https://")) {
     cleaned = `https://${cleaned}`;
   }
   try {
-    return new URL(cleaned).toString().replace(/\/$/, "");
+    const parsed = new URL(cleaned);
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+      return PRODUCTION_SITE_URL;
+    }
+    return parsed.toString().replace(/\/$/, "");
   } catch {
-    return "http://localhost:3000";
+    return PRODUCTION_SITE_URL;
   }
 }
 
@@ -75,6 +81,7 @@ export const siteConfig: SiteConfig = {
       title: "Company & Legal",
       links: [
         { label: "About CertiDesk Pro", href: "/about" },
+        { label: "Founder — Vinkal Prajapati", href: "/vinkal-prajapati" },
         { label: "Resource Blog", href: "/blog" },
         { label: "Contact Sales", href: "/contact" },
         { label: "Register Institute", href: "/register" },

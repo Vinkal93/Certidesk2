@@ -1,4 +1,5 @@
 import { siteConfig } from "@/config/site";
+import { founderProfile } from "@/config/founder";
 
 export interface BreadcrumbItem {
   name: string;
@@ -32,17 +33,169 @@ export function buildOrganizationJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": `${siteConfig.url}/#organization`,
     name: siteConfig.name,
     url: siteConfig.url,
     logo: `${siteConfig.url}/icon`,
     description: siteConfig.description,
     areaServed: "IN",
+    founder: {
+      "@id": `${siteConfig.url}/#vinkal-prajapati`,
+      "@type": "Person",
+      name: founderProfile.name,
+      url: `${siteConfig.url}/vinkal-prajapati`,
+    },
+    sameAs: [founderProfile.links.certidesk, founderProfile.links.sbci],
     contactPoint: {
       "@type": "ContactPoint",
       email: siteConfig.supportEmail,
       contactType: "customer support",
       availableLanguage: ["English", "Hindi"],
     },
+  };
+}
+
+export function buildFounderPersonJsonLd(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "@id": `${siteConfig.url}/#vinkal-prajapati`,
+    name: founderProfile.name,
+    alternateName: [
+      "Vinkal Prajapati Developer",
+      "Vinkal Prajapati Android Developer",
+      "Vinkal Prajapati Software Engineer",
+    ],
+    url: `${siteConfig.url}/vinkal-prajapati`,
+    email: `mailto:${founderProfile.email}`,
+    jobTitle: "Software Developer, Android Engineer & Founder",
+    description: founderProfile.positioning,
+    knowsAbout: [
+      "Android Development",
+      "Kotlin",
+      "Jetpack Compose",
+      "Next.js",
+      "React",
+      "Firebase",
+      "Firestore",
+      "SaaS Architecture",
+      "Multi-Tenant Software",
+      "Education Technology",
+    ],
+    sameAs: [...founderProfile.sameAs],
+    worksFor: {
+      "@type": "EducationalOrganization",
+      name: founderProfile.experience.organization,
+      url: founderProfile.experience.website,
+    },
+    owns: [
+      {
+        "@type": "Organization",
+        name: siteConfig.name,
+        url: siteConfig.url,
+      },
+      {
+        "@type": "EducationalOrganization",
+        name: founderProfile.experience.organization,
+        url: founderProfile.experience.website,
+      },
+    ],
+  };
+}
+
+export function buildKnowledgeGraphJsonLd(): Record<string, unknown> {
+  const personId = `${siteConfig.url}/#vinkal-prajapati`;
+  const orgId = `${siteConfig.url}/#organization`;
+  const websiteId = `${siteConfig.url}/#website`;
+  const sbciId = `${founderProfile.links.sbci}/#organization`;
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Person",
+        "@id": personId,
+        name: founderProfile.name,
+        url: `${siteConfig.url}/vinkal-prajapati`,
+        email: `mailto:${founderProfile.email}`,
+        jobTitle: "Software Developer, Android Developer & Founder",
+        description: founderProfile.heroSubheading,
+        sameAs: [...founderProfile.sameAs],
+        knowsAbout: [
+          "Kotlin",
+          "Android Development",
+          "Jetpack Compose",
+          "React.js",
+          "Next.js",
+          "Firebase",
+          "Firestore",
+          "SaaS Development",
+          "Multi-Tenant Architecture",
+          "Education Technology",
+        ],
+        worksFor: { "@id": sbciId },
+      },
+      {
+        "@type": "EducationalOrganization",
+        "@id": sbciId,
+        name: founderProfile.experience.organization,
+        url: founderProfile.experience.website,
+        founder: { "@id": personId },
+      },
+      {
+        "@type": "Organization",
+        "@id": orgId,
+        name: siteConfig.name,
+        url: siteConfig.url,
+        logo: `${siteConfig.url}/icon`,
+        description: siteConfig.description,
+        areaServed: "IN",
+        founder: { "@id": personId },
+        sameAs: [siteConfig.url, founderProfile.links.sbci],
+      },
+      {
+        "@type": "WebSite",
+        "@id": websiteId,
+        name: siteConfig.name,
+        url: siteConfig.url,
+        inLanguage: "en-IN",
+        description: siteConfig.description,
+        publisher: { "@id": orgId },
+        creator: { "@id": personId },
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": `${siteConfig.url}/#software`,
+        name: siteConfig.name,
+        applicationCategory: "EducationalApplication",
+        operatingSystem: "Web",
+        inLanguage: "en-IN",
+        url: siteConfig.url,
+        description: siteConfig.description,
+        author: { "@id": personId },
+        creator: { "@id": personId },
+        publisher: { "@id": orgId },
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "INR",
+          description:
+            "Self-service institute registration with ₹0 upfront setup and prepaid Razorpay wallet recharge options.",
+        },
+      },
+    ],
+  };
+}
+
+export function buildFounderProfilePageJsonLd(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    url: `${siteConfig.url}/vinkal-prajapati`,
+    name: `${founderProfile.name} — Software Developer, Android Engineer & Founder`,
+    description: founderProfile.heroSubheading,
+    inLanguage: "en-IN",
+    mainEntity: buildFounderPersonJsonLd(),
   };
 }
 
