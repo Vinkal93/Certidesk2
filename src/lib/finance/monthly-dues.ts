@@ -1,11 +1,12 @@
 import type { StudentFeePlanRecord } from "@/types/academic";
 
-export type InstallmentStatus = "PAID" | "OVERDUE" | "DUE" | "UPCOMING";
+export type InstallmentStatus = "PAID" | "PARTIAL" | "OVERDUE" | "DUE" | "UPCOMING";
 
 export interface MonthlyInstallmentItem {
   index: number;
   label: string;
   monthKey: string;
+  dueDate: string;
   amountPaise: number;
   paidPaise: number;
   pendingPaise: number;
@@ -13,6 +14,8 @@ export interface MonthlyInstallmentItem {
 }
 
 export interface MonthlyDueBreakdown {
+  courseFeePaise: number;
+  admissionFeePaise: number;
   overduePaise: number;
   dueThisMonthPaise: number;
   upcomingPaise: number;
@@ -55,7 +58,7 @@ export function computeMonthlyDueBreakdown(
     for (let i = 0; i < months; i++) {
       const d = addMonths(validStart, i);
       rawItems.push({
-        label: `Month ${i + 1} (${d.toLocaleDateString("en-IN", { month: "short", year: "numeric" })})`,
+        label: d.toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
         monthKey: toMonthKey(d),
         amountPaise: monthly,
       });
@@ -89,13 +92,13 @@ export function computeMonthlyDueBreakdown(
     let status: InstallmentStatus = "PAID";
     if (pending > 0) {
       if (item.monthKey < currentMonthKey) {
-        status = "OVERDUE";
+        status = applied > 0 ? "PARTIAL" : "OVERDUE";
         overduePaise += pending;
       } else if (item.monthKey === currentMonthKey) {
-        status = "DUE";
+        status = applied > 0 ? "PARTIAL" : "DUE";
         dueThisMonthPaise += pending;
       } else {
-        status = "UPCOMING";
+        status = applied > 0 ? "PARTIAL" : "UPCOMING";
         upcomingPaise += pending;
       }
     }
@@ -104,6 +107,7 @@ export function computeMonthlyDueBreakdown(
       index: idx,
       label: item.label,
       monthKey: item.monthKey,
+      dueDate: `${item.monthKey}-10`,
       amountPaise: item.amountPaise,
       paidPaise: applied,
       pendingPaise: pending,
@@ -117,6 +121,8 @@ export function computeMonthlyDueBreakdown(
   else if (upcomingPaise > 0) overallStatus = "UPCOMING";
 
   return {
+    courseFeePaise: Math.max(0, plan.totalFeePaise - admission),
+    admissionFeePaise: admission,
     overduePaise,
     dueThisMonthPaise,
     upcomingPaise,

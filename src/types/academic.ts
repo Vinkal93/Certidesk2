@@ -26,7 +26,11 @@ export interface CourseRecord {
   marksheetEnabled?: boolean;
   description: string;
   subjects: CourseSubject[];
-  status: "active" | "inactive" | "archived";
+  status: "active" | "inactive" | "archived" | "deleted";
+  enrolledCount?: number;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
+  deletionReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }

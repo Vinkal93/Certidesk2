@@ -26,7 +26,8 @@ import type { BatchRecord, CourseRecord } from "@/types/academic";
 import type { StudentRecord } from "@/types/domain";
 
 export async function listInstituteStudents(
-  actor: SessionUser
+  actor: SessionUser,
+  includeDeleted = false
 ): Promise<StudentRecord[]> {
   if (!hasStaffPermission(actor, "students:read")) {
     throw new AuthError(403, "FORBIDDEN", "Missing students:read permission.");
@@ -35,6 +36,7 @@ export async function listInstituteStudents(
   const snap = await studentsCollection().where("instituteId", "==", institute.id).get();
   return snap.docs
     .map((d) => d.data())
+    .filter((s) => includeDeleted || s.status !== "deleted")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 200);
 }
@@ -43,12 +45,12 @@ export async function listInstituteStudentsPaginated(
   actor: SessionUser,
   filter: {
     search?: string | undefined;
-    status?: "all" | "active" | "disabled" | undefined;
+    status?: "all" | "active" | "disabled" | "deleted" | undefined;
     page?: number | undefined;
     pageSize?: number | undefined;
   } = {}
 ) {
-  let items = await listInstituteStudents(actor);
+  let items = await listInstituteStudents(actor, filter.status === "deleted");
 
   if (filter.status && filter.status !== "all") {
     items = items.filter((s) => s.status === filter.status);
@@ -639,7 +641,8 @@ export async function resetStudentPassword(
 
 export async function deleteStudent(
   actor: SessionUser,
-  studentId: string
+  studentId: string,
+  reason = "Deleted by institute administrator"
 ): Promise<{ deleted: true; studentCode: string }> {
   if (!hasStaffPermission(actor, "students:write")) {
     throw new AuthError(403, "FORBIDDEN", "Missing students:write permission.");
@@ -648,24 +651,30 @@ export async function deleteStudent(
   const student = await getInstituteStudentById(actor, studentId);
   const db = getAdminFirestore();
   const auth = getAdminAuth();
+  const now = new Date().toISOString();
 
   if (student.uid) {
-    await auth.deleteUser(student.uid).catch(async () => {
-      await auth.updateUser(student.uid, { disabled: true }).catch(() => undefined);
-    });
+    await auth.updateUser(student.uid, { disabled: true }).catch(() => undefined);
+    await auth.revokeRefreshTokens(student.uid).catch(() => undefined);
   }
 
   const batch = db.batch();
-  batch.delete(studentsCollection().doc(student.id));
+  batch.update(studentsCollection().doc(student.id), {
+    status: "deleted",
+    deletedAt: now,
+    deletedBy: actor.uid,
+    deletionReason: reason.trim() || "Deleted by administrator",
+    updatedAt: now,
+  });
   if (student.uid) {
-    batch.delete(usersCollection().doc(student.uid));
-  }
-  if (student.studentCode) {
-    batch.delete(loginMappingsCollection().doc(student.studentCode.toUpperCase()));
+    batch.update(usersCollection().doc(student.uid), {
+      status: "disabled",
+      updatedAt: now,
+    });
   }
   await batch.commit();
 
-  if (student.batchId) {
+  if (student.batchId && student.status !== "deleted") {
     const batchRef = db.collection("batches").doc(student.batchId);
     const batchSnap = await batchRef.get().catch(() => null);
     if (batchSnap?.exists) {
@@ -682,8 +691,64 @@ export async function deleteStudent(
     actorRole: actor.role,
     instituteId: student.instituteId,
     targetId: student.id,
-    metadata: { studentCode: student.studentCode, fullName: student.fullName },
+    metadata: {
+      studentCode: student.studentCode,
+      fullName: student.fullName,
+      reason: reason.trim(),
+    },
   });
 
   return { deleted: true, studentCode: student.studentCode };
+}
+
+export async function restoreStudent(
+  actor: SessionUser,
+  studentId: string
+): Promise<StudentRecord> {
+  if (!hasStaffPermission(actor, "students:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing students:write permission.");
+  }
+
+  const student = await getInstituteStudentById(actor, studentId);
+  const db = getAdminFirestore();
+  const auth = getAdminAuth();
+  const now = new Date().toISOString();
+
+  if (student.uid) {
+    await auth.updateUser(student.uid, { disabled: false }).catch(() => undefined);
+  }
+
+  const batch = db.batch();
+  batch.update(studentsCollection().doc(student.id), {
+    status: "active",
+    deletedAt: null,
+    deletedBy: null,
+    deletionReason: null,
+    updatedAt: now,
+  });
+  if (student.uid) {
+    batch.update(usersCollection().doc(student.uid), {
+      status: "active",
+      updatedAt: now,
+    });
+  }
+  await batch.commit();
+
+  await recordAuditLog({
+    action: "STUDENT_RESTORED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: student.instituteId,
+    targetId: student.id,
+    metadata: { studentCode: student.studentCode, fullName: student.fullName },
+  });
+
+  return {
+    ...student,
+    status: "active",
+    deletedAt: null,
+    deletedBy: null,
+    deletionReason: null,
+    updatedAt: now,
+  };
 }

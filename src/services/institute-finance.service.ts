@@ -54,7 +54,74 @@ export function formatReceiptNumber(
   return `RCP-${instituteCode}-${year}-${padded}`;
 }
 
-export async function getInstituteFinanceOverview(actor: SessionUser) {
+export type FinanceDateRangeKey =
+  "today" | "week" | "month" | "last_month" | "fy" | "all" | "custom";
+
+function resolveDateBounds(
+  range: FinanceDateRangeKey = "month",
+  customFrom?: string,
+  customTo?: string
+): { startIso: string; endIso: string } {
+  const now = new Date();
+  const endOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    23,
+    59,
+    59,
+    999
+  );
+  if (range === "all") {
+    return {
+      startIso: "1970-01-01T00:00:00.000Z",
+      endIso: "2099-12-31T23:59:59.999Z",
+    };
+  }
+  if (range === "today") {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    return { startIso: start.toISOString(), endIso: endOfToday.toISOString() };
+  }
+  if (range === "week") {
+    const start = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - 6,
+      0,
+      0,
+      0,
+      0
+    );
+    return { startIso: start.toISOString(), endIso: endOfToday.toISOString() };
+  }
+  if (range === "last_month") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    return { startIso: start.toISOString(), endIso: end.toISOString() };
+  }
+  if (range === "fy") {
+    const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const start = new Date(fyStartYear, 3, 1, 0, 0, 0, 0);
+    return { startIso: start.toISOString(), endIso: endOfToday.toISOString() };
+  }
+  if (range === "custom" && customFrom && customTo) {
+    return {
+      startIso: `${customFrom.slice(0, 10)}T00:00:00.000Z`,
+      endIso: `${customTo.slice(0, 10)}T23:59:59.999Z`,
+    };
+  }
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  return { startIso: monthStart.toISOString(), endIso: endOfToday.toISOString() };
+}
+
+export async function getInstituteFinanceOverview(
+  actor: SessionUser,
+  filter: {
+    range?: FinanceDateRangeKey | undefined;
+    from?: string | undefined;
+    to?: string | undefined;
+  } = {}
+) {
   if (!hasStaffPermission(actor, "fees:read")) {
     throw new AuthError(403, "FORBIDDEN", "Missing fees:read permission.");
   }
@@ -77,23 +144,41 @@ export async function getInstituteFinanceOverview(actor: SessionUser) {
   const ledgerEntries = ledgerSnap.docs.map((d) => d.data());
   const accounts = accountsSnap.docs.map((d) => d.data());
 
+  const rangeKey = filter.range ?? "month";
+  const { startIso, endIso } = resolveDateBounds(rangeKey, filter.from, filter.to);
+  const inRange = (iso: string) => iso >= startIso && iso <= endIso;
+
+  const activeReceipts = receipts.filter((r) => r.status !== "cancelled");
+  const rangedReceipts = activeReceipts.filter((r) => inRange(r.issuedAt));
+
   const now = new Date();
   const todayPrefix = now.toISOString().slice(0, 10);
   const monthPrefix = now.toISOString().slice(0, 7);
 
   let todayCollectionPaise = 0;
   let monthCollectionPaise = 0;
+  let periodCollectionPaise = 0;
   const methodTotalsPaise: Record<string, number> = {};
+  const dailyCollectionMap = new Map<string, number>();
+  const dailyIncomeMap = new Map<string, number>();
+  const dailyExpenseMap = new Map<string, number>();
 
-  for (const p of payments) {
-    if (p.createdAt.startsWith(todayPrefix)) {
-      todayCollectionPaise += p.amountPaise;
+  for (const r of activeReceipts) {
+    if (r.issuedAt.startsWith(todayPrefix)) {
+      todayCollectionPaise += r.amountPaise;
     }
-    if (p.createdAt.startsWith(monthPrefix)) {
-      monthCollectionPaise += p.amountPaise;
+    if (r.issuedAt.startsWith(monthPrefix)) {
+      monthCollectionPaise += r.amountPaise;
     }
-    const method = p.paymentMode ?? "cash";
-    methodTotalsPaise[method] = (methodTotalsPaise[method] ?? 0) + p.amountPaise;
+  }
+
+  for (const r of rangedReceipts) {
+    periodCollectionPaise += r.amountPaise;
+    const method = r.paymentMethod ?? "cash";
+    methodTotalsPaise[method] = (methodTotalsPaise[method] ?? 0) + r.amountPaise;
+    const day = r.issuedAt.slice(0, 10);
+    dailyCollectionMap.set(day, (dailyCollectionMap.get(day) ?? 0) + r.amountPaise);
+    dailyIncomeMap.set(day, (dailyIncomeMap.get(day) ?? 0) + r.amountPaise);
   }
 
   let totalOutstandingPaise = 0;
@@ -112,20 +197,65 @@ export async function getInstituteFinanceOverview(actor: SessionUser) {
     }
   }
 
-  const totalRefundedPaise = refunds.reduce((sum, r) => sum + r.amountPaise, 0);
-  const otherIncomePaise = ledgerEntries
-    .filter((e) => e.entryType === "income" && e.status === "posted")
-    .reduce((sum, e) => sum + e.amountPaise, 0);
-  const totalExpensesPaise = ledgerEntries
-    .filter((e) => e.entryType === "expense" && e.status === "posted")
-    .reduce((sum, e) => sum + e.amountPaise, 0);
-  const totalFeesCollectedPaise = payments.reduce((sum, p) => sum + p.amountPaise, 0);
+  const rangedRefunds = refunds.filter((r) => inRange(r.createdAt));
+  const totalRefundedPaise = rangedRefunds.reduce((sum, r) => sum + r.amountPaise, 0);
+
+  const rangedIncomeEntries = ledgerEntries.filter(
+    (e) =>
+      e.entryType === "income" && e.status === "posted" && inRange(e.date || e.createdAt)
+  );
+  const rangedExpenseEntries = ledgerEntries.filter(
+    (e) =>
+      e.entryType === "expense" && e.status === "posted" && inRange(e.date || e.createdAt)
+  );
+
+  for (const e of rangedIncomeEntries) {
+    const day = (e.date || e.createdAt).slice(0, 10);
+    dailyIncomeMap.set(day, (dailyIncomeMap.get(day) ?? 0) + e.amountPaise);
+  }
+  for (const e of rangedExpenseEntries) {
+    const day = (e.date || e.createdAt).slice(0, 10);
+    dailyExpenseMap.set(day, (dailyExpenseMap.get(day) ?? 0) + e.amountPaise);
+  }
+
+  const otherIncomePaise = rangedIncomeEntries.reduce((sum, e) => sum + e.amountPaise, 0);
+  const totalExpensesPaise = rangedExpenseEntries.reduce(
+    (sum, e) => sum + e.amountPaise,
+    0
+  );
+  const totalFeesCollectedPaise = activeReceipts.reduce(
+    (sum, r) => sum + r.amountPaise,
+    0
+  );
+
+  const allDays = Array.from(
+    new Set([
+      ...dailyCollectionMap.keys(),
+      ...dailyIncomeMap.keys(),
+      ...dailyExpenseMap.keys(),
+    ])
+  ).sort();
+
+  const collectionTrend = allDays.map((day) => ({
+    label: day.slice(5),
+    date: day,
+    amountPaise: dailyCollectionMap.get(day) ?? 0,
+  }));
+
+  const incomeVsExpenseTrend = allDays.map((day) => ({
+    label: day.slice(5),
+    date: day,
+    incomePaise: dailyIncomeMap.get(day) ?? 0,
+    expensePaise: dailyExpenseMap.get(day) ?? 0,
+  }));
 
   return {
     instituteId: institute.id,
     instituteName: institute.name,
+    range: rangeKey,
     todayCollectionPaise,
     monthCollectionPaise,
+    periodCollectionPaise,
     totalFeesCollectedPaise,
     totalOutstandingPaise,
     totalRefundedPaise,
@@ -135,11 +265,10 @@ export async function getInstituteFinanceOverview(actor: SessionUser) {
     otherIncomePaise,
     totalExpensesPaise,
     operationalSurplusPaise:
-      totalFeesCollectedPaise +
-      otherIncomePaise -
-      totalRefundedPaise -
-      totalExpensesPaise,
+      periodCollectionPaise + otherIncomePaise - totalRefundedPaise - totalExpensesPaise,
     methodTotalsPaise,
+    collectionTrend,
+    incomeVsExpenseTrend,
     plans: plans.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     payments: payments.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     receipts: receipts.sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)),
@@ -807,4 +936,100 @@ export async function recordLedgerEntry(
   });
 
   return entry;
+}
+
+export async function cancelInstituteReceipt(
+  actor: SessionUser,
+  input: { receiptId: string; reason: string }
+) {
+  if (!hasStaffPermission(actor, "fees:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing fees:write permission.");
+  }
+  const institute = await resolveAuthorizedInstitute(actor);
+  const db = getAdminFirestore();
+  const receiptRef = feeReceiptsCollection().doc(input.receiptId);
+  const now = new Date().toISOString();
+  const reversalRef = `REV-${Date.now().toString().slice(-6)}`;
+
+  const result = await db.runTransaction(async (tx) => {
+    const receiptSnap = await tx.get(receiptRef);
+    const receipt = receiptSnap.data();
+    if (!receiptSnap.exists || !receipt || receipt.instituteId !== institute.id) {
+      throw new AuthError(404, "RECEIPT_NOT_FOUND", "Fee receipt not found.");
+    }
+    if (receipt.status === "cancelled") {
+      throw new AuthError(
+        409,
+        "ALREADY_REVERSED",
+        "This fee receipt has already been reversed."
+      );
+    }
+
+    const planRef = feePlansCol().doc(receipt.feePlanId);
+    const planSnap = await tx.get(planRef);
+    const plan = planSnap.data();
+    if (!planSnap.exists || !plan || plan.instituteId !== institute.id) {
+      throw new AuthError(
+        404,
+        "FEE_PLAN_NOT_FOUND",
+        "Linked student fee plan not found."
+      );
+    }
+
+    const nextPaidPaise = Math.max(0, plan.paidPaise - receipt.amountPaise);
+    const netPayable = Math.max(0, plan.totalFeePaise - plan.discountPaise);
+    const nextPendingPaise = Math.max(0, netPayable - nextPaidPaise);
+
+    tx.update(receiptRef, {
+      status: "cancelled",
+      reversalRef,
+      reversedAt: now,
+      reversedByUid: actor.uid,
+      reversalReason: input.reason.trim(),
+    });
+
+    tx.update(planRef, {
+      paidPaise: nextPaidPaise,
+      pendingPaise: nextPendingPaise,
+      updatedAt: now,
+    });
+
+    if (receipt.paymentId) {
+      const paymentRef = feePaymentsCol().doc(receipt.paymentId);
+      const paymentSnap = await tx.get(paymentRef);
+      if (paymentSnap.exists) {
+        tx.update(paymentRef, {
+          note: `${paymentSnap.data()?.note ?? ""} [REVERSED: ${reversalRef}]`.trim(),
+        });
+      }
+    }
+
+    return {
+      receiptId: receipt.id,
+      receiptNumber: receipt.receiptNumber,
+      studentId: receipt.studentId,
+      studentName: receipt.studentName,
+      amountPaise: receipt.amountPaise,
+      reversalRef,
+      nextPaidPaise,
+      nextPendingPaise,
+    };
+  });
+
+  await recordAuditLog({
+    action: "FEE_RECEIPT_REVERSED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: institute.id,
+    targetId: result.receiptId,
+    metadata: {
+      receiptNumber: result.receiptNumber,
+      reversalRef: result.reversalRef,
+      amountPaise: result.amountPaise,
+      reason: input.reason.trim(),
+      nextPendingPaise: result.nextPendingPaise,
+    },
+  });
+
+  return result;
 }

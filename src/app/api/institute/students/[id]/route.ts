@@ -5,6 +5,7 @@ import {
   deleteStudent,
   getInstituteStudentById,
   resetStudentPassword,
+  restoreStudent,
   setStudentStatus,
   updateStudentProfile,
 } from "@/services/student.service";
@@ -71,6 +72,10 @@ export async function POST(
       const student = await setStudentStatus(actor, id, "disabled");
       return jsonOk({ student });
     }
+    if (parsed.data.action === "restore") {
+      const student = await restoreStudent(actor, id);
+      return jsonOk({ student });
+    }
 
     const reset = await resetStudentPassword(actor, id);
     return jsonOk({ reset });
@@ -80,13 +85,18 @@ export async function POST(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
     const actor = await requireSessionUser("institute");
     const { id } = await context.params;
-    const result = await deleteStudent(actor, id);
+    const body = (await request.json().catch(() => null)) as { reason?: string } | null;
+    const result = await deleteStudent(
+      actor,
+      id,
+      body?.reason || "Deleted by institute administrator"
+    );
     return jsonOk(result);
   } catch (error) {
     return handleApiError(error);

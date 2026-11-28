@@ -129,7 +129,7 @@ export function gradeMcqAttempt(params: {
 
 // ─── QUESTION BANK ────────────────────────────────────────────────────────────
 
-export async function listQuestionBank(actor: SessionUser) {
+export async function listQuestionBank(actor: SessionUser, includeDeleted = false) {
   if (!hasStaffPermission(actor, "exams:read")) {
     throw new AuthError(403, "FORBIDDEN", "Missing exams:read permission.");
   }
@@ -137,57 +137,225 @@ export async function listQuestionBank(actor: SessionUser) {
   const snap = await questionBankCol().where("instituteId", "==", institute.id).get();
   return snap.docs
     .map((d) => d.data())
+    .filter((q) => includeDeleted || q.status !== "deleted")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export interface QuestionBankCreateInput {
+  questionText: string;
+  imageUrl?: string | undefined;
+  questionType: QuestionType;
+  subject: string;
+  topic: string;
+  courseName?: string | undefined;
+  language?: string | undefined;
+  difficulty: QuestionDifficulty;
+  options: QuestionOption[];
+  correctOptionIds: string[];
+  correctText?: string | undefined;
+  marks: number;
+  negativeMarks?: number | undefined;
+  explanation?: string | undefined;
+  status?: "active" | "archived" | undefined;
+}
+
+function validateAndBuildQuestionRecord(
+  actor: SessionUser,
+  instituteId: string,
+  input: QuestionBankCreateInput,
+  existing?: QuestionBankRecord
+): QuestionBankRecord {
+  const isTextAnswer =
+    input.questionType === "fill_blank" || input.questionType === "short_answer";
+  const validIds = new Set(input.options.map((o) => o.id));
+  const cleanCorrect = isTextAnswer
+    ? []
+    : input.correctOptionIds.filter((id) => validIds.has(id));
+
+  if (!isTextAnswer && cleanCorrect.length === 0) {
+    throw new AuthError(400, "INVALID_ANSWER_KEY", "Select at least one valid option.");
+  }
+  if (isTextAnswer && !input.correctText?.trim()) {
+    throw new AuthError(400, "INVALID_ANSWER_KEY", "Provide the expected answer text.");
+  }
+
+  const now = new Date().toISOString();
+  const id = existing?.id ?? generateId("QBN");
+  return {
+    id,
+    instituteId,
+    questionText: input.questionText.trim(),
+    ...(input.imageUrl?.trim() ? { imageUrl: input.imageUrl.trim() } : {}),
+    questionType: input.questionType,
+    subject: input.subject.trim(),
+    topic: input.topic.trim() || "General",
+    ...(input.courseName?.trim() ? { courseName: input.courseName.trim() } : {}),
+    ...(input.language?.trim() ? { language: input.language.trim() } : {}),
+    difficulty: input.difficulty,
+    options: input.options,
+    correctOptionIds: cleanCorrect,
+    ...(input.correctText?.trim() ? { correctText: input.correctText.trim() } : {}),
+    marks: input.marks,
+    negativeMarks: Math.max(0, input.negativeMarks ?? 0),
+    explanation: input.explanation?.trim() ?? "",
+    status: (input.status ?? existing?.status === "archived") ? "archived" : "active",
+    createdBy: existing?.createdBy ?? actor.uid,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
 }
 
 export async function createQuestionBankItem(
   actor: SessionUser,
-  input: {
-    questionText: string;
-    questionType: QuestionType;
-    subject: string;
-    topic: string;
-    difficulty: QuestionDifficulty;
-    options: QuestionOption[];
-    correctOptionIds: string[];
-    marks: number;
-    negativeMarks?: number | undefined;
-    explanation?: string | undefined;
-  }
+  input: QuestionBankCreateInput
 ): Promise<QuestionBankRecord> {
   if (!hasStaffPermission(actor, "exams:write")) {
     throw new AuthError(403, "FORBIDDEN", "Missing exams:write permission.");
   }
   const institute = await resolveAuthorizedInstitute(actor);
-  const validIds = new Set(input.options.map((o) => o.id));
-  const cleanCorrect = input.correctOptionIds.filter((id) => validIds.has(id));
-  if (cleanCorrect.length === 0) {
-    throw new AuthError(400, "INVALID_ANSWER_KEY", "Select at least one valid option.");
+  const record = validateAndBuildQuestionRecord(actor, institute.id, input);
+  await questionBankCol().doc(record.id).set(record);
+  return record;
+}
+
+export async function updateQuestionBankItem(
+  actor: SessionUser,
+  questionId: string,
+  input: QuestionBankCreateInput
+): Promise<QuestionBankRecord> {
+  if (!hasStaffPermission(actor, "exams:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing exams:write permission.");
+  }
+  const institute = await resolveAuthorizedInstitute(actor);
+  const ref = questionBankCol().doc(questionId);
+  const snap = await ref.get();
+  const existing = snap.data();
+  if (!snap.exists || !existing || existing.instituteId !== institute.id) {
+    throw new AuthError(404, "QUESTION_NOT_FOUND", "Question not found.");
+  }
+  const updated = validateAndBuildQuestionRecord(actor, institute.id, input, existing);
+  await ref.set(updated);
+  return updated;
+}
+
+export async function deleteQuestionBankItem(
+  actor: SessionUser,
+  questionId: string,
+  reason = "Deleted by administrator"
+): Promise<{ deleted: true; id: string }> {
+  if (!hasStaffPermission(actor, "exams:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing exams:write permission.");
+  }
+  const institute = await resolveAuthorizedInstitute(actor);
+  const ref = questionBankCol().doc(questionId);
+  const snap = await ref.get();
+  const existing = snap.data();
+  if (!snap.exists || !existing || existing.instituteId !== institute.id) {
+    throw new AuthError(404, "QUESTION_NOT_FOUND", "Question not found.");
+  }
+  const now = new Date().toISOString();
+  await ref.update({
+    status: "deleted",
+    deletedAt: now,
+    deletedBy: actor.uid,
+    deletionReason: reason.trim() || "Deleted by administrator",
+    updatedAt: now,
+  });
+  await recordAuditLog({
+    action: "QUESTION_DELETED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: institute.id,
+    targetId: questionId,
+    metadata: { reason: reason.trim() },
+  });
+  return { deleted: true, id: questionId };
+}
+
+export async function restoreQuestionBankItem(
+  actor: SessionUser,
+  questionId: string
+): Promise<QuestionBankRecord> {
+  if (!hasStaffPermission(actor, "exams:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing exams:write permission.");
+  }
+  const institute = await resolveAuthorizedInstitute(actor);
+  const ref = questionBankCol().doc(questionId);
+  const snap = await ref.get();
+  const existing = snap.data();
+  if (!snap.exists || !existing || existing.instituteId !== institute.id) {
+    throw new AuthError(404, "QUESTION_NOT_FOUND", "Question not found.");
+  }
+  const restored: QuestionBankRecord = {
+    ...existing,
+    status: "active",
+    deletedAt: null,
+    deletedBy: null,
+    deletionReason: null,
+    updatedAt: new Date().toISOString(),
+  };
+  await ref.set(restored);
+  return restored;
+}
+
+export async function bulkImportQuestionBankItems(
+  actor: SessionUser,
+  items: QuestionBankCreateInput[]
+): Promise<{
+  importedCount: number;
+  skippedDuplicates: number;
+  questions: QuestionBankRecord[];
+}> {
+  if (!hasStaffPermission(actor, "exams:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing exams:write permission.");
+  }
+  const institute = await resolveAuthorizedInstitute(actor);
+  const existingSnap = await questionBankCol()
+    .where("instituteId", "==", institute.id)
+    .get();
+  const existingTexts = new Set(
+    existingSnap.docs
+      .filter((d) => d.data().status !== "deleted")
+      .map((d) => d.data().questionText.trim().toLowerCase())
+  );
+
+  const created: QuestionBankRecord[] = [];
+  let skippedDuplicates = 0;
+
+  for (const item of items) {
+    const key = item.questionText.trim().toLowerCase();
+    if (existingTexts.has(key)) {
+      skippedDuplicates++;
+      continue;
+    }
+    existingTexts.add(key);
+    created.push(validateAndBuildQuestionRecord(actor, institute.id, item));
   }
 
-  const now = new Date().toISOString();
-  const id = generateId("QBN");
-  const record: QuestionBankRecord = {
-    id,
-    instituteId: institute.id,
-    questionText: input.questionText.trim(),
-    questionType: input.questionType,
-    subject: input.subject.trim(),
-    topic: input.topic.trim(),
-    difficulty: input.difficulty,
-    options: input.options,
-    correctOptionIds: cleanCorrect,
-    marks: input.marks,
-    negativeMarks: Math.max(0, input.negativeMarks ?? 0),
-    explanation: input.explanation?.trim() ?? "",
-    status: "active",
-    createdBy: actor.uid,
-    createdAt: now,
-    updatedAt: now,
-  };
+  const db = getAdminFirestore();
+  for (let i = 0; i < created.length; i += 400) {
+    const chunk = created.slice(i, i + 400);
+    const batch = db.batch();
+    for (const q of chunk) {
+      batch.set(questionBankCol().doc(q.id), q);
+    }
+    await batch.commit();
+  }
 
-  await questionBankCol().doc(id).set(record);
-  return record;
+  await recordAuditLog({
+    action: "QUESTION_IMPORTED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: institute.id,
+    targetId: institute.id,
+    metadata: { importedCount: created.length, skippedDuplicates },
+  });
+
+  return {
+    importedCount: created.length,
+    skippedDuplicates,
+    questions: created,
+  };
 }
 
 // ─── ONLINE EXAMS ─────────────────────────────────────────────────────────────
