@@ -195,16 +195,180 @@ export function gradeMcqAttempt(params: {
 
 // ─── QUESTION BANK ────────────────────────────────────────────────────────────
 
+export const GLOBAL_QUESTION_BANK_ID = "__GLOBAL__";
+
+async function fetchInstituteAndGlobalQuestions(
+  instituteId: string
+): Promise<QuestionBankRecord[]> {
+  const [instSnap, globalSnap] = await Promise.all([
+    questionBankCol().where("instituteId", "==", instituteId).get(),
+    questionBankCol().where("instituteId", "==", GLOBAL_QUESTION_BANK_ID).get(),
+  ]);
+  return [...instSnap.docs.map((d) => d.data()), ...globalSnap.docs.map((d) => d.data())];
+}
+
 export async function listQuestionBank(actor: SessionUser, includeDeleted = false) {
   if (!hasStaffPermission(actor, "exams:read")) {
     throw new AuthError(403, "FORBIDDEN", "Missing exams:read permission.");
   }
   const institute = await resolveAuthorizedInstitute(actor);
-  const snap = await questionBankCol().where("instituteId", "==", institute.id).get();
+  const items = await fetchInstituteAndGlobalQuestions(institute.id);
+  return items
+    .filter((q) => {
+      if (q.instituteId === GLOBAL_QUESTION_BANK_ID) {
+        return q.status === "active";
+      }
+      return includeDeleted || q.status !== "deleted";
+    })
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function listGlobalQuestionBank(
+  actor: SessionUser,
+  includeDeleted = false
+): Promise<QuestionBankRecord[]> {
+  if (actor.role !== "super_admin") {
+    throw new AuthError(403, "FORBIDDEN", "Super Admin authorization required.");
+  }
+  const snap = await questionBankCol()
+    .where("instituteId", "==", GLOBAL_QUESTION_BANK_ID)
+    .get();
   return snap.docs
     .map((d) => d.data())
     .filter((q) => includeDeleted || q.status !== "deleted")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function createGlobalQuestionBankItem(
+  actor: SessionUser,
+  input: QuestionBankCreateInput
+): Promise<QuestionBankRecord> {
+  if (actor.role !== "super_admin") {
+    throw new AuthError(403, "FORBIDDEN", "Super Admin authorization required.");
+  }
+  const record = validateAndBuildQuestionRecord(actor, GLOBAL_QUESTION_BANK_ID, input);
+  await questionBankCol().doc(record.id).set(record);
+  return record;
+}
+
+export async function updateGlobalQuestionBankItem(
+  actor: SessionUser,
+  questionId: string,
+  input: QuestionBankCreateInput
+): Promise<QuestionBankRecord> {
+  if (actor.role !== "super_admin") {
+    throw new AuthError(403, "FORBIDDEN", "Super Admin authorization required.");
+  }
+  const ref = questionBankCol().doc(questionId);
+  const snap = await ref.get();
+  const existing = snap.data();
+  if (!snap.exists || !existing || existing.instituteId !== GLOBAL_QUESTION_BANK_ID) {
+    throw new AuthError(404, "QUESTION_NOT_FOUND", "Global question not found.");
+  }
+  const updated = validateAndBuildQuestionRecord(
+    actor,
+    GLOBAL_QUESTION_BANK_ID,
+    input,
+    existing
+  );
+  await ref.set(updated);
+  return updated;
+}
+
+export async function deleteGlobalQuestionBankItem(
+  actor: SessionUser,
+  questionId: string,
+  reason = "Deleted by super admin"
+) {
+  if (actor.role !== "super_admin") {
+    throw new AuthError(403, "FORBIDDEN", "Super Admin authorization required.");
+  }
+  const ref = questionBankCol().doc(questionId);
+  const snap = await ref.get();
+  const existing = snap.data();
+  if (!snap.exists || !existing || existing.instituteId !== GLOBAL_QUESTION_BANK_ID) {
+    throw new AuthError(404, "QUESTION_NOT_FOUND", "Global question not found.");
+  }
+  const now = new Date().toISOString();
+  await ref.update({
+    status: "deleted",
+    deletedAt: now,
+    deletedBy: actor.uid,
+    deletionReason: reason.trim() || "Deleted by super admin",
+    updatedAt: now,
+  });
+  return { deleted: true, id: questionId };
+}
+
+export async function restoreGlobalQuestionBankItem(
+  actor: SessionUser,
+  questionId: string
+): Promise<QuestionBankRecord> {
+  if (actor.role !== "super_admin") {
+    throw new AuthError(403, "FORBIDDEN", "Super Admin authorization required.");
+  }
+  const ref = questionBankCol().doc(questionId);
+  const snap = await ref.get();
+  const existing = snap.data();
+  if (!snap.exists || !existing || existing.instituteId !== GLOBAL_QUESTION_BANK_ID) {
+    throw new AuthError(404, "QUESTION_NOT_FOUND", "Global question not found.");
+  }
+  const restored: QuestionBankRecord = {
+    ...existing,
+    status: "active",
+    deletedAt: null,
+    deletedBy: null,
+    deletionReason: null,
+    updatedAt: new Date().toISOString(),
+  };
+  await ref.set(restored);
+  return restored;
+}
+
+export async function bulkImportGlobalQuestionBankItems(
+  actor: SessionUser,
+  items: QuestionBankCreateInput[]
+) {
+  if (actor.role !== "super_admin") {
+    throw new AuthError(403, "FORBIDDEN", "Super Admin authorization required.");
+  }
+  const existingSnap = await questionBankCol()
+    .where("instituteId", "==", GLOBAL_QUESTION_BANK_ID)
+    .get();
+  const existingTexts = new Set(
+    existingSnap.docs
+      .filter((d) => d.data().status !== "deleted")
+      .map((d) => d.data().questionText.trim().toLowerCase())
+  );
+
+  const created: QuestionBankRecord[] = [];
+  let skippedDuplicates = 0;
+
+  for (const item of items) {
+    const key = item.questionText.trim().toLowerCase();
+    if (existingTexts.has(key)) {
+      skippedDuplicates++;
+      continue;
+    }
+    existingTexts.add(key);
+    created.push(validateAndBuildQuestionRecord(actor, GLOBAL_QUESTION_BANK_ID, item));
+  }
+
+  const db = getAdminFirestore();
+  for (let i = 0; i < created.length; i += 400) {
+    const chunk = created.slice(i, i + 400);
+    const batch = db.batch();
+    for (const q of chunk) {
+      batch.set(questionBankCol().doc(q.id), q);
+    }
+    await batch.commit();
+  }
+
+  return {
+    importedCount: created.length,
+    skippedDuplicates,
+    questions: created,
+  };
 }
 
 export interface QuestionBankCreateInput {
@@ -492,10 +656,8 @@ export async function createOnlineExam(
   const requestedCount = input.questionCount ?? input.questionIds?.length ?? 0;
 
   if (requestedCount > 0 && (!input.questionIds || input.questionIds.length === 0)) {
-    const qSnap = await questionBankCol().where("instituteId", "==", institute.id).get();
-    const eligibleCount = qSnap.docs
-      .map((d) => d.data())
-      .filter((q) => matchesQuestionPool(q, poolTag)).length;
+    const allPool = await fetchInstituteAndGlobalQuestions(institute.id);
+    const eligibleCount = allPool.filter((q) => matchesQuestionPool(q, poolTag)).length;
     if (eligibleCount < requestedCount) {
       throw new AuthError(
         400,
@@ -700,10 +862,8 @@ export async function updateOnlineExam(
     const poolTag =
       patch.questionPoolTag ?? existing.questionPoolTag ?? existing.courseName;
     const targetCount = patch.questionCount ?? existing.questionCount ?? 20;
-    const qSnap = await questionBankCol().where("instituteId", "==", institute.id).get();
-    const eligiblePool = qSnap.docs
-      .map((d) => d.data())
-      .filter((q) => matchesQuestionPool(q, poolTag));
+    const allPool = await fetchInstituteAndGlobalQuestions(institute.id);
+    const eligiblePool = allPool.filter((q) => matchesQuestionPool(q, poolTag));
 
     if (eligiblePool.length < targetCount) {
       throw new AuthError(
@@ -884,15 +1044,15 @@ export async function reevaluateOnlineExamResults(
     throw new AuthError(404, "EXAM_NOT_FOUND", "Examination not found.");
   }
 
-  const [qSnap, attemptsSnap, resultsSnap] = await Promise.all([
-    questionBankCol().where("instituteId", "==", institute.id).get(),
+  const [allQuestions, attemptsSnap, resultsSnap] = await Promise.all([
+    fetchInstituteAndGlobalQuestions(institute.id),
     examAttemptsCol().where("examId", "==", exam.id).get(),
     examResultsCol().where("examId", "==", exam.id).get(),
   ]);
 
   const answerKeys = new Map<string, string[]>();
-  for (const doc of qSnap.docs) {
-    answerKeys.set(doc.id, doc.data().correctOptionIds);
+  for (const q of allQuestions) {
+    answerKeys.set(q.id, q.correctOptionIds);
   }
 
   const attemptById = new Map(attemptsSnap.docs.map((d) => [d.id, d.data()]));
@@ -1006,11 +1166,11 @@ export async function getExamAttemptAnalysis(
     instituteId = institute.id;
   }
 
-  const [examSnap, attemptSnap, resultsSnap, qSnap] = await Promise.all([
+  const [examSnap, attemptSnap, resultsSnap, allQuestions] = await Promise.all([
     onlineExamsCol().doc(examId).get(),
     examAttemptsCol().doc(attemptId).get(),
     examResultsCol().where("attemptId", "==", attemptId).get(),
-    questionBankCol().where("instituteId", "==", instituteId).get(),
+    fetchInstituteAndGlobalQuestions(instituteId),
   ]);
 
   const exam = examSnap.data();
@@ -1031,7 +1191,7 @@ export async function getExamAttemptAnalysis(
     );
   }
 
-  const qMap = new Map(qSnap.docs.map((d) => [d.id, d.data()]));
+  const qMap = new Map(allQuestions.map((q) => [q.id, q]));
   const analysis: ExamQuestionAnalysisItem[] = attempt.questionSnapshot.map((item) => {
     const fullQ = qMap.get(item.questionId);
     const selected = attempt.answers[item.questionId] ?? [];
@@ -1243,8 +1403,8 @@ export async function startStudentExamAttempt(
     );
   }
 
-  const qSnap = await questionBankCol().where("instituteId", "==", institute.id).get();
-  const qMap = new Map(qSnap.docs.map((d) => [d.id, d.data()]));
+  const allQuestions = await fetchInstituteAndGlobalQuestions(institute.id);
+  const qMap = new Map(allQuestions.map((q) => [q.id, q]));
   const selectedQuestions: QuestionBankRecord[] = exam.questionIds
     .map((qId) => qMap.get(qId))
     .filter((q): q is QuestionBankRecord => Boolean(q && q.status === "active"));
@@ -1347,10 +1507,10 @@ export async function autosaveOrSubmitAttempt(
     throw new AuthError(404, "EXAM_NOT_FOUND", "Examination not found.");
   }
 
-  const qSnap = await questionBankCol().where("instituteId", "==", institute.id).get();
+  const allQuestions = await fetchInstituteAndGlobalQuestions(institute.id);
   const answerKeys = new Map<string, string[]>();
-  for (const doc of qSnap.docs) {
-    answerKeys.set(doc.id, doc.data().correctOptionIds);
+  for (const q of allQuestions) {
+    answerKeys.set(q.id, q.correctOptionIds);
   }
 
   const graded = gradeMcqAttempt({

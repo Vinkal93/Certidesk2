@@ -123,6 +123,11 @@ export const suNavGroups: SuNavGroup[] = [
         href: "/su/marksheet-templates",
         icon: "fileBarChart",
       },
+      {
+        label: "Question Bank",
+        href: "/su/question-bank",
+        icon: "fileText",
+      },
       { label: "Global Configuration", href: "/su/settings", icon: "settings" },
     ],
   },

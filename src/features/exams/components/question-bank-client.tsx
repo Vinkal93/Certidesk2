@@ -85,8 +85,10 @@ function normalizeType(raw: string): QuestionType | null {
 
 export function QuestionBankClient({
   initialQuestions,
+  apiBasePath = "/api/institute/question-bank",
 }: {
   initialQuestions: QuestionBankRecord[];
+  apiBasePath?: string;
 }) {
   const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -219,9 +221,7 @@ export function QuestionBankClient({
         explanation: explanation.trim() || undefined,
       };
 
-      const url = editingQuestion
-        ? `/api/institute/question-bank/${editingQuestion.id}`
-        : "/api/institute/question-bank";
+      const url = editingQuestion ? `${apiBasePath}/${editingQuestion.id}` : apiBasePath;
       const method = editingQuestion ? "PATCH" : "POST";
 
       const res = await fetch(url, {
@@ -457,7 +457,7 @@ export function QuestionBankClient({
     setImporting(true);
     setError(null);
     try {
-      const res = await fetch("/api/institute/question-bank/import", {
+      const res = await fetch(`${apiBasePath}/import`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -535,10 +535,9 @@ export function QuestionBankClient({
   const handleToggleDeleted = async () => {
     const next = !showDeleted;
     setShowDeleted(next);
-    const res = await fetch(
-      `/api/institute/question-bank?includeDeleted=${next ? "1" : "0"}`,
-      { cache: "no-store" }
-    );
+    const res = await fetch(`${apiBasePath}?includeDeleted=${next ? "1" : "0"}`, {
+      cache: "no-store",
+    });
     const json = (await res.json()) as {
       ok: boolean;
       data?: { questions: QuestionBankRecord[] };
@@ -552,7 +551,7 @@ export function QuestionBankClient({
     if (!deleteTarget) return;
     setDeleteLoading(true);
     try {
-      const res = await fetch(`/api/institute/question-bank/${deleteTarget.id}`, {
+      const res = await fetch(`${apiBasePath}/${deleteTarget.id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason }),
@@ -574,7 +573,7 @@ export function QuestionBankClient({
   };
 
   const handleRestore = async (q: QuestionBankRecord) => {
-    const res = await fetch(`/api/institute/question-bank/${q.id}`, {
+    const res = await fetch(`${apiBasePath}/${q.id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "restore" }),

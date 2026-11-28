@@ -296,7 +296,7 @@ export function CertificatesClient({
                         Download PDF
                       </a>
                       <a
-                        href={`/api/institute/certificates/${cert.id}/pdf`}
+                        href={`/api/institute/certificates/${cert.id}/pdf?format=html`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={buttonVariants({ variant: "outline", size: "sm" })}

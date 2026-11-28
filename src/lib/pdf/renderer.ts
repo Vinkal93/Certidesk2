@@ -108,6 +108,22 @@ function parseHexColor(hex: string) {
   return rgb(r, g, b);
 }
 
+/**
+ * Standard PDF fonts (Helvetica, TimesRoman, Courier) only support WinAnsi (Latin-1).
+ * Replace common Unicode symbols so pdf-lib never throws an encoding error.
+ */
+function toWinAnsiSafe(text: string): string {
+  return text
+    .replace(/★/g, "*")
+    .replace(/[•·]/g, "-")
+    .replace(/[—–]/g, "-")
+    .replace(/₹/g, "Rs.")
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/…/g, "...")
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, "");
+}
+
 export async function renderCertificatePdfBuffer(params: {
   template: CertificateTemplateRecord;
   placeholders: CertificatePlaceholderValues;
@@ -130,7 +146,14 @@ export async function renderCertificatePdfBuffer(params: {
   const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const times = await pdfDoc.embedFont(StandardFonts.TimesRoman);
   const timesBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+  const timesItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
+  const timesBoldItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanBoldItalic);
   const courier = await pdfDoc.embedFont(StandardFonts.Courier);
+
+  const navyColor = parseHexColor(template.secondaryColorHex || "#0C2340");
+  const goldColor = parseHexColor(
+    template.accentColorHex || template.borderColorHex || "#D4AF37"
+  );
 
   // Background & Double Gold Border
   page.drawRectangle({
@@ -140,12 +163,43 @@ export async function renderCertificatePdfBuffer(params: {
     height: pageHeightPt,
     color: parseHexColor(template.backgroundColorHex),
   });
+
+  // Sweeping Corner Accents (Top-Right & Bottom-Left)
+  if (template.showCornerDecorations !== false) {
+    page.drawCircle({
+      x: pageWidthPt - 10 * MM_TO_PT,
+      y: pageHeightPt - 10 * MM_TO_PT,
+      size: 46 * MM_TO_PT,
+      color: goldColor,
+      opacity: 0.9,
+    });
+    page.drawCircle({
+      x: pageWidthPt - 4 * MM_TO_PT,
+      y: pageHeightPt - 4 * MM_TO_PT,
+      size: 40 * MM_TO_PT,
+      color: navyColor,
+    });
+    page.drawCircle({
+      x: 10 * MM_TO_PT,
+      y: 10 * MM_TO_PT,
+      size: 46 * MM_TO_PT,
+      color: goldColor,
+      opacity: 0.9,
+    });
+    page.drawCircle({
+      x: 4 * MM_TO_PT,
+      y: 4 * MM_TO_PT,
+      size: 40 * MM_TO_PT,
+      color: navyColor,
+    });
+  }
+
   page.drawRectangle({
     x: 8 * MM_TO_PT,
     y: 8 * MM_TO_PT,
     width: pageWidthPt - 16 * MM_TO_PT,
     height: pageHeightPt - 16 * MM_TO_PT,
-    borderColor: parseHexColor(template.accentColorHex || template.borderColorHex),
+    borderColor: goldColor,
     borderWidth: 2,
   });
   page.drawRectangle({
@@ -153,12 +207,12 @@ export async function renderCertificatePdfBuffer(params: {
     y: 10.5 * MM_TO_PT,
     width: pageWidthPt - 21 * MM_TO_PT,
     height: pageHeightPt - 21 * MM_TO_PT,
-    borderColor: parseHexColor(template.accentColorHex || template.borderColorHex),
+    borderColor: goldColor,
     borderWidth: 0.9,
   });
 
   if (template.watermarkText) {
-    page.drawText(template.watermarkText, {
+    page.drawText(toWinAnsiSafe(template.watermarkText), {
       x: pageWidthPt * 0.28,
       y: pageHeightPt * 0.48,
       size: 38,
@@ -171,6 +225,7 @@ export async function renderCertificatePdfBuffer(params: {
     if (el.visible === false) continue;
     const xPt = el.xMm * MM_TO_PT;
     const widthPt = el.widthMm * MM_TO_PT;
+    const heightPt = el.heightMm * MM_TO_PT;
     const yPtTop = el.yMm * MM_TO_PT;
 
     if (el.type === "divider") {
@@ -199,25 +254,113 @@ export async function renderCertificatePdfBuffer(params: {
       continue;
     }
 
-    if (el.type === "image" || el.type === "medal" || el.type === "seal") {
+    if (el.type === "medal") {
+      const cx = xPt + widthPt / 2;
+      const cy = pageHeightPt - yPtTop - widthPt / 2;
+      page.drawCircle({
+        x: cx,
+        y: cy,
+        size: (widthPt / 2) * 0.88,
+        color: goldColor,
+      });
+      page.drawCircle({
+        x: cx,
+        y: cy,
+        size: (widthPt / 2) * 0.72,
+        color: navyColor,
+      });
+      page.drawText("CERTIFIED", {
+        x: cx - 18,
+        y: cy + 2,
+        size: 6.5,
+        font: helveticaBold,
+        color: rgb(1, 1, 1),
+      });
+      page.drawText("STUDENT", {
+        x: cx - 15,
+        y: cy - 7,
+        size: 6.5,
+        font: helveticaBold,
+        color: goldColor,
+      });
       continue;
     }
 
-    const resolvedText = resolveApprovedPlaceholders(el.content, placeholders);
+    if (el.type === "seal") {
+      const cx = xPt + widthPt / 2;
+      const cy = pageHeightPt - yPtTop - heightPt / 2;
+      page.drawCircle({
+        x: cx,
+        y: cy,
+        size: (Math.min(widthPt, heightPt) / 2) * 0.9,
+        borderColor: navyColor,
+        borderWidth: 1.6,
+      });
+      page.drawText("VERIFIED SEAL", {
+        x: cx - 22,
+        y: cy - 3,
+        size: 6,
+        font: helveticaBold,
+        color: navyColor,
+      });
+      continue;
+    }
+
+    if (el.type === "image") {
+      if (!el.content.includes("institute_logo")) {
+        page.drawLine({
+          start: { x: xPt, y: pageHeightPt - yPtTop - heightPt + 2 },
+          end: { x: xPt + widthPt, y: pageHeightPt - yPtTop - heightPt + 2 },
+          thickness: 0.8,
+          color: navyColor,
+        });
+      }
+      continue;
+    }
+
+    const resolvedText = toWinAnsiSafe(
+      resolveApprovedPlaceholders(el.content, placeholders)
+    );
     if (!resolvedText.trim()) continue;
-    const font =
+
+    if (el.type === "banner" || el.type === "ribbon" || el.type === "pill") {
+      const bg = parseHexColor(
+        el.backgroundColorHex || (el.type === "ribbon" ? "#F5DE83" : "#0C2340")
+      );
+      page.drawRectangle({
+        x: xPt,
+        y: pageHeightPt - yPtTop - heightPt,
+        width: widthPt,
+        height: heightPt,
+        color: bg,
+        borderColor: el.borderColorHex ? parseHexColor(el.borderColorHex) : goldColor,
+        borderWidth: el.type === "banner" ? 1.5 : 0.8,
+      });
+    }
+
+    const useSerif =
       el.fontFamily === "TimesRoman" ||
       el.fontFamily === "Cinzel Decorative" ||
       el.fontFamily === "Cormorant Garamond" ||
-      el.fontFamily === "Libre Baskerville"
-        ? el.fontWeight === "bold"
-          ? timesBold
-          : times
-        : el.fontFamily === "Courier"
-          ? courier
+      el.fontFamily === "Libre Baskerville" ||
+      el.fontFamily === "Great Vibes" ||
+      el.fontFamily === "Allura";
+
+    const font = useSerif
+      ? el.fontFamily === "Great Vibes" || el.fontFamily === "Allura"
+        ? timesBoldItalic
+        : el.fontStyle === "italic"
+          ? el.fontWeight === "bold"
+            ? timesBoldItalic
+            : timesItalic
           : el.fontWeight === "bold"
-            ? helveticaBold
-            : helvetica;
+            ? timesBold
+            : times
+      : el.fontFamily === "Courier"
+        ? courier
+        : el.fontWeight === "bold"
+          ? helveticaBold
+          : helvetica;
 
     const textWidth = font.widthOfTextAtSize(resolvedText, el.fontSizePt);
     const drawX =
@@ -227,9 +370,14 @@ export async function renderCertificatePdfBuffer(params: {
           ? xPt + Math.max(0, widthPt - textWidth)
           : xPt;
 
+    const drawY =
+      el.type === "banner" || el.type === "ribbon" || el.type === "pill"
+        ? pageHeightPt - yPtTop - (heightPt + el.fontSizePt * 0.72) / 2
+        : pageHeightPt - yPtTop - el.fontSizePt;
+
     page.drawText(resolvedText, {
       x: drawX,
-      y: pageHeightPt - yPtTop - el.fontSizePt,
+      y: drawY,
       size: el.fontSizePt,
       font,
       color: parseHexColor(el.colorHex),

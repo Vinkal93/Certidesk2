@@ -181,6 +181,31 @@ export async function GET(
       studentName: cert.studentName,
     });
 
+    const format = request.nextUrl.searchParams.get("format");
+    if (format === "html") {
+      const QRCode = (await import("qrcode")).default;
+      const { buildCertificateDocumentHtml } = await import("@/lib/pdf/certificate-html");
+      const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+        width: 480,
+        margin: 1,
+      });
+      const html = buildCertificateDocumentHtml({
+        template,
+        placeholders,
+        qrDataUrl,
+      }).replace(
+        "</body>",
+        `<script>window.addEventListener("load", () => { Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 2500))]).then(() => setTimeout(() => window.print(), 200)); });</script></body>`
+      );
+      return new Response(html, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
     const download = request.nextUrl.searchParams.get("download") === "1";
 
     return new Response(Buffer.from(pdfBytes), {
