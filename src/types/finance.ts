@@ -37,6 +37,7 @@ export interface FeeReceiptRecord {
   discountPaise: number;
   remainingDuesPaise: number;
   paymentMethod: FeePaymentMethod;
+  accountId?: string | null;
   transactionRef: string | null;
   issuedByUid: string;
   status: "issued" | "cancelled";

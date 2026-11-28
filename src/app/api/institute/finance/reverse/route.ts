@@ -4,10 +4,15 @@ import { requireSessionUser } from "@/lib/security/session";
 import { cancelInstituteReceipt } from "@/services/institute-finance.service";
 import { handleApiError, jsonError, jsonOk } from "@/lib/utils/api-response";
 
-const reverseSchema = z.object({
-  receiptId: z.string().min(1),
-  reason: z.string().trim().min(4, "Provide a reversal reason.").max(300),
-});
+const reverseSchema = z
+  .object({
+    receiptId: z.string().min(1).optional(),
+    paymentId: z.string().min(1).optional(),
+    reason: z.string().trim().min(3, "Provide a deletion/reversal reason.").max(300),
+  })
+  .refine((d) => Boolean(d.receiptId || d.paymentId), {
+    message: "Provide receiptId or paymentId.",
+  });
 
 export async function POST(request: NextRequest) {
   try {

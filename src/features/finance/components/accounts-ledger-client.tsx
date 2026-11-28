@@ -2,12 +2,14 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Edit3, Power, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
+import { ResponsiveFormModal } from "@/components/ui/responsive-form-modal";
 import type {
   FeePaymentMethod,
   InstituteAccountRecord,
@@ -48,6 +50,17 @@ export function AccountsLedgerClient({
   const [accName, setAccName] = React.useState("");
   const [accType, setAccType] = React.useState<"cash" | "bank" | "upi">("cash");
   const [openingRupees, setOpeningRupees] = React.useState("0");
+
+  // Edit / Delete modals
+  const [editAccount, setEditAccount] = React.useState<InstituteAccountRecord | null>(
+    null
+  );
+  const [editAccName, setEditAccName] = React.useState("");
+  const [editAccType, setEditAccType] = React.useState<"cash" | "bank" | "upi">("cash");
+  const [deleteAccTarget, setDeleteAccTarget] =
+    React.useState<InstituteAccountRecord | null>(null);
+  const [deleteEntryTarget, setDeleteEntryTarget] =
+    React.useState<InstituteLedgerEntryRecord | null>(null);
 
   const filteredCats = categories.filter((c) =>
     mode === "income"
@@ -261,11 +274,63 @@ export function AccountsLedgerClient({
                     key={acc.id}
                     className="border-border bg-surface rounded-xl border p-4"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-foreground text-sm font-semibold">
-                        {acc.name}
-                      </span>
-                      <Badge variant="primary">{acc.accountType.toUpperCase()}</Badge>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="text-foreground block truncate text-sm font-semibold">
+                          {acc.name}
+                        </span>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <Badge variant="primary">{acc.accountType.toUpperCase()}</Badge>
+                          <Badge variant={acc.status === "active" ? "success" : "danger"}>
+                            {acc.status}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          title="Edit Account"
+                          onClick={() => {
+                            setEditAccount(acc);
+                            setEditAccName(acc.name);
+                            setEditAccType(acc.accountType);
+                          }}
+                        >
+                          <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          title={acc.status === "active" ? "Deactivate" : "Activate"}
+                          onClick={() =>
+                            void postAction(
+                              {
+                                action: "update_account",
+                                accountId: acc.id,
+                                status: acc.status === "active" ? "inactive" : "active",
+                              },
+                              `Account ${acc.status === "active" ? "deactivated" : "activated"}.`
+                            )
+                          }
+                        >
+                          <Power className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          title="Delete Account"
+                          onClick={() => setDeleteAccTarget(acc)}
+                        >
+                          <Trash2
+                            className="text-danger h-3.5 w-3.5"
+                            aria-hidden="true"
+                          />
+                        </Button>
+                      </div>
                     </div>
                     <p className="text-foreground mt-2 text-xl font-bold tabular-nums">
                       ₹{(acc.ledgerBalancePaise / 100).toFixed(2)}
@@ -458,21 +523,51 @@ export function AccountsLedgerClient({
                       <th className="px-3 py-2 font-semibold">Category</th>
                       <th className="px-3 py-2 font-semibold">Description</th>
                       <th className="px-3 py-2 font-semibold">Amount</th>
+                      <th className="px-3 py-2 font-semibold">Status</th>
+                      <th className="px-3 py-2 font-semibold">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-border divide-y">
                     {entries
                       .filter((e) => e.entryType === mode)
-                      .map((entry) => (
-                        <tr key={entry.id}>
-                          <td className="px-3 py-2.5">{entry.date}</td>
-                          <td className="px-3 py-2.5">{entry.categoryName}</td>
-                          <td className="px-3 py-2.5">{entry.description}</td>
-                          <td className="px-3 py-2.5 font-semibold tabular-nums">
-                            ₹{(entry.amountPaise / 100).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
+                      .map((entry) => {
+                        const isRev = entry.status === "reversed";
+                        return (
+                          <tr key={entry.id}>
+                            <td className="px-3 py-2.5">{entry.date}</td>
+                            <td className="px-3 py-2.5">{entry.categoryName}</td>
+                            <td className="px-3 py-2.5">{entry.description}</td>
+                            <td
+                              className={`px-3 py-2.5 font-semibold tabular-nums ${
+                                isRev ? "text-muted line-through" : ""
+                              }`}
+                            >
+                              ₹{(entry.amountPaise / 100).toFixed(2)}
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <Badge variant={isRev ? "danger" : "success"}>
+                                {entry.status}
+                              </Badge>
+                            </td>
+                            <td className="px-3 py-2.5">
+                              {!isRev && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  title="Delete / Reverse Entry"
+                                  onClick={() => setDeleteEntryTarget(entry)}
+                                >
+                                  <Trash2
+                                    className="text-danger h-3.5 w-3.5"
+                                    aria-hidden="true"
+                                  />
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>
@@ -480,6 +575,106 @@ export function AccountsLedgerClient({
           </Card>
         </div>
       ) : null}
+
+      <ResponsiveFormModal
+        open={Boolean(editAccount)}
+        onClose={() => setEditAccount(null)}
+        title="Edit Account"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!editAccount) return;
+            void postAction(
+              {
+                action: "update_account",
+                accountId: editAccount.id,
+                name: editAccName,
+                accountType: editAccType,
+              },
+              "Account updated."
+            ).then(() => setEditAccount(null));
+          }}
+          className="space-y-4"
+        >
+          <Input
+            label="Account Name"
+            value={editAccName}
+            onChange={(e) => setEditAccName(e.target.value)}
+            required
+          />
+          <Select
+            label="Account Type"
+            value={editAccType}
+            onChange={(e) => setEditAccType(e.target.value as "cash" | "bank" | "upi")}
+            options={[
+              { label: "Cash", value: "cash" },
+              { label: "Bank", value: "bank" },
+              { label: "UPI", value: "upi" },
+            ]}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setEditAccount(null)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" loading={loading}>
+              Save Account
+            </Button>
+          </div>
+        </form>
+      </ResponsiveFormModal>
+
+      <ConfirmDeleteModal
+        open={Boolean(deleteAccTarget)}
+        onClose={() => setDeleteAccTarget(null)}
+        onConfirm={async (reason) => {
+          if (!deleteAccTarget) return;
+          await postAction(
+            {
+              action: "delete_account",
+              accountId: deleteAccTarget.id,
+              reason,
+            },
+            "Account deleted."
+          );
+          setDeleteAccTarget(null);
+        }}
+        title="Delete Account"
+        recordLabel={deleteAccTarget?.name ?? ""}
+        affectedSummary="Deletes this custom account if it has no linked transactions. Accounts with historical transactions cannot be deleted—deactivate them instead."
+        loading={loading}
+      />
+
+      <ConfirmDeleteModal
+        open={Boolean(deleteEntryTarget)}
+        onClose={() => setDeleteEntryTarget(null)}
+        onConfirm={async (reason) => {
+          if (!deleteEntryTarget) return;
+          await postAction(
+            {
+              action: "reverse_entry",
+              entryId: deleteEntryTarget.id,
+              reason,
+            },
+            "Entry reversed and account balance updated."
+          );
+          setDeleteEntryTarget(null);
+        }}
+        title={`Delete / Reverse ${deleteEntryTarget?.entryType === "income" ? "Income" : "Expense"}`}
+        recordLabel={
+          deleteEntryTarget
+            ? `${deleteEntryTarget.description} (₹${(deleteEntryTarget.amountPaise / 100).toFixed(2)})`
+            : ""
+        }
+        affectedSummary="Reverses the account ledger balance, marks this entry as reversed while preserving audit history, and updates Profit & Loss totals."
+        confirmLabel="Confirm Delete & Reverse"
+        loading={loading}
+      />
     </div>
   );
 }

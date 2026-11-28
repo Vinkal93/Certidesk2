@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { getSessionUser } from "@/lib/security/session";
+import { listPublicSubscriptionPlans } from "@/services/su-platform.service";
 import { buildPrivateNoIndexMetadata } from "@/lib/seo/metadata";
 import { PageContainer, SectionHeader } from "@/components/layout";
 import { Container } from "@/components/ui/container";
@@ -28,8 +29,10 @@ export default async function RegisterPage() {
     user = null;
   }
   if (user?.role === "institute_admin") {
-    redirect("/onboarding/wallet");
+    redirect("/institute/dashboard");
   }
+
+  const publicPlans = await listPublicSubscriptionPlans();
 
   return (
     <PageContainer>
@@ -38,7 +41,7 @@ export default async function RegisterPage() {
           <SectionHeader
             eyebrow="Self-Service Registration"
             title="Launch your CertiDesk Pro workspace"
-            description="Register your institute in two quick steps. Recharge your prepaid wallet now or skip for later."
+            description="Complete 3 quick steps: Institute Details, Account Security, and Plan & Payment."
           />
 
           <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12">
@@ -66,7 +69,7 @@ export default async function RegisterPage() {
             </div>
 
             <div className="lg:col-span-7">
-              <RegisterWizard />
+              <RegisterWizard plans={publicPlans} />
             </div>
           </div>
         </Container>

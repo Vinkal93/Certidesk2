@@ -142,7 +142,10 @@ export async function getInstituteFinanceOverview(
   const receipts = receiptsSnap.docs.map((d) => d.data());
   const refunds = refundsSnap.docs.map((d) => d.data());
   const ledgerEntries = ledgerSnap.docs.map((d) => d.data());
-  const accounts = accountsSnap.docs.map((d) => d.data());
+  let accounts = accountsSnap.docs.map((d) => d.data());
+  if (accounts.length === 0) {
+    accounts = await ensureDefaultInstituteAccounts(institute.id);
+  }
 
   const rangeKey = filter.range ?? "month";
   const { startIso, endIso } = resolveDateBounds(rangeKey, filter.from, filter.to);
@@ -500,6 +503,21 @@ export async function collectInstituteFee(
       createdAt: now,
     };
 
+    let resolvedAccountId: string | null = input.accountId ?? null;
+    if (!resolvedAccountId) {
+      const accsSnap = await instituteAccountsCollection()
+        .where("instituteId", "==", institute.id)
+        .get();
+      const wantType = input.method === "cash" ? "cash" : "bank";
+      const activeAccs = accsSnap.docs
+        .map((d) => d.data())
+        .filter((a) => a.status === "active");
+      resolvedAccountId =
+        activeAccs.find((a) => a.accountType === wantType)?.id ??
+        activeAccs[0]?.id ??
+        null;
+    }
+
     const receipt: FeeReceiptRecord = {
       id: receiptId,
       receiptNumber,
@@ -516,6 +534,7 @@ export async function collectInstituteFee(
       discountPaise: extraDiscountPaise,
       remainingDuesPaise: nextPending,
       paymentMethod: input.method,
+      accountId: resolvedAccountId,
       transactionRef: input.reference?.trim() || null,
       issuedByUid: actor.uid,
       status: "issued",
@@ -530,8 +549,8 @@ export async function collectInstituteFee(
       updatedAt: now,
     };
 
-    if (input.accountId) {
-      const accRef = instituteAccountsCollection().doc(input.accountId);
+    if (resolvedAccountId) {
+      const accRef = instituteAccountsCollection().doc(resolvedAccountId);
       const accSnap = await tx.get(accRef);
       const acc = accSnap.data();
       if (accSnap.exists && acc && acc.instituteId === institute.id) {
@@ -723,17 +742,69 @@ export async function listFinanceAccountsAndLedger(actor: SessionUser) {
     instituteLedgerEntriesCollection().where("instituteId", "==", institute.id).get(),
   ]);
 
+  let accounts = accSnap.docs
+    .map((d) => d.data())
+    .sort((a, b) => a.name.localeCompare(b.name));
+  if (accounts.length === 0) {
+    accounts = await ensureDefaultInstituteAccounts(institute.id);
+  }
+
   return {
     categories: catSnap.docs
       .map((d) => d.data())
       .sort((a, b) => a.name.localeCompare(b.name)),
-    accounts: accSnap.docs
-      .map((d) => d.data())
-      .sort((a, b) => a.name.localeCompare(b.name)),
+    accounts,
     entries: entriesSnap.docs
       .map((d) => d.data())
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   };
+}
+
+export async function ensureDefaultInstituteAccounts(
+  instituteId: string
+): Promise<InstituteAccountRecord[]> {
+  const existing = await instituteAccountsCollection()
+    .where("instituteId", "==", instituteId)
+    .limit(1)
+    .get();
+  if (!existing.empty) {
+    const all = await instituteAccountsCollection()
+      .where("instituteId", "==", instituteId)
+      .get();
+    return all.docs.map((d) => d.data());
+  }
+
+  const now = new Date().toISOString();
+  const cashAcc: InstituteAccountRecord = {
+    id: generateId("ACC"),
+    instituteId,
+    name: "Cash Account",
+    accountType: "cash",
+    openingBalancePaise: 0,
+    ledgerBalancePaise: 0,
+    status: "active",
+    createdAt: now,
+    updatedAt: now,
+  };
+  const bankAcc: InstituteAccountRecord = {
+    id: generateId("ACC"),
+    instituteId,
+    name: "Bank Account",
+    accountType: "bank",
+    openingBalancePaise: 0,
+    ledgerBalancePaise: 0,
+    status: "active",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const db = getAdminFirestore();
+  const batch = db.batch();
+  batch.set(instituteAccountsCollection().doc(cashAcc.id), cashAcc);
+  batch.set(instituteAccountsCollection().doc(bankAcc.id), bankAcc);
+  await batch.commit();
+
+  return [bankAcc, cashAcc];
 }
 
 export async function createFinanceCategory(
@@ -938,16 +1009,214 @@ export async function recordLedgerEntry(
   return entry;
 }
 
-export async function cancelInstituteReceipt(
+export async function updateFinanceAccount(
   actor: SessionUser,
-  input: { receiptId: string; reason: string }
+  accountId: string,
+  input: {
+    name?: string | undefined;
+    accountType?: "cash" | "bank" | "upi" | undefined;
+    status?: "active" | "inactive" | undefined;
+  }
+): Promise<InstituteAccountRecord> {
+  if (!hasStaffPermission(actor, "fees:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing fees:write permission.");
+  }
+  const institute = await resolveAuthorizedInstitute(actor);
+  const ref = instituteAccountsCollection().doc(accountId);
+  const snap = await ref.get();
+  const existing = snap.data();
+  if (!snap.exists || !existing || existing.instituteId !== institute.id) {
+    throw new AuthError(404, "ACCOUNT_NOT_FOUND", "Account not found.");
+  }
+
+  const updated: InstituteAccountRecord = {
+    ...existing,
+    ...(input.name?.trim() ? { name: input.name.trim() } : {}),
+    ...(input.accountType ? { accountType: input.accountType } : {}),
+    ...(input.status ? { status: input.status } : {}),
+    updatedAt: new Date().toISOString(),
+  };
+  await ref.set(updated);
+
+  await recordAuditLog({
+    action: "ACCOUNT_UPDATED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: institute.id,
+    targetId: accountId,
+    metadata: { name: updated.name, status: updated.status },
+  });
+  return updated;
+}
+
+export async function deleteFinanceAccount(
+  actor: SessionUser,
+  accountId: string,
+  reason = "Deleted by administrator"
+) {
+  if (!hasStaffPermission(actor, "fees:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing fees:write permission.");
+  }
+  const institute = await resolveAuthorizedInstitute(actor);
+  const ref = instituteAccountsCollection().doc(accountId);
+  const snap = await ref.get();
+  const existing = snap.data();
+  if (!snap.exists || !existing || existing.instituteId !== institute.id) {
+    throw new AuthError(404, "ACCOUNT_NOT_FOUND", "Account not found.");
+  }
+
+  const [ledgerSnap, toLedgerSnap, receiptsSnap] = await Promise.all([
+    instituteLedgerEntriesCollection()
+      .where("instituteId", "==", institute.id)
+      .where("accountId", "==", accountId)
+      .limit(1)
+      .get(),
+    instituteLedgerEntriesCollection()
+      .where("instituteId", "==", institute.id)
+      .where("toAccountId", "==", accountId)
+      .limit(1)
+      .get(),
+    feeReceiptsCollection()
+      .where("instituteId", "==", institute.id)
+      .where("accountId", "==", accountId)
+      .limit(1)
+      .get(),
+  ]);
+
+  if (!ledgerSnap.empty || !toLedgerSnap.empty || !receiptsSnap.empty) {
+    throw new AuthError(
+      409,
+      "ACCOUNT_IN_USE",
+      `Cannot delete "${existing.name}" because it has linked transactions. Deactivate the account instead.`
+    );
+  }
+
+  await ref.delete();
+  await recordAuditLog({
+    action: "ACCOUNT_DELETED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: institute.id,
+    targetId: accountId,
+    metadata: { name: existing.name, reason: reason.trim() },
+  });
+  return { deleted: true, accountId };
+}
+
+export async function reverseLedgerEntry(
+  actor: SessionUser,
+  entryId: string,
+  reason: string
 ) {
   if (!hasStaffPermission(actor, "fees:write")) {
     throw new AuthError(403, "FORBIDDEN", "Missing fees:write permission.");
   }
   const institute = await resolveAuthorizedInstitute(actor);
   const db = getAdminFirestore();
-  const receiptRef = feeReceiptsCollection().doc(input.receiptId);
+  const entryRef = instituteLedgerEntriesCollection().doc(entryId);
+  const now = new Date().toISOString();
+
+  const reversed = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(entryRef);
+    const entry = snap.data();
+    if (!snap.exists || !entry || entry.instituteId !== institute.id) {
+      throw new AuthError(404, "ENTRY_NOT_FOUND", "Ledger entry not found.");
+    }
+    if (entry.status === "reversed") {
+      throw new AuthError(
+        409,
+        "ALREADY_REVERSED",
+        "This ledger entry has already been reversed."
+      );
+    }
+
+    const accRef = instituteAccountsCollection().doc(entry.accountId);
+    const accSnap = await tx.get(accRef);
+    const acc = accSnap.data();
+
+    if (accSnap.exists && acc) {
+      if (entry.entryType === "income") {
+        tx.update(accRef, {
+          ledgerBalancePaise: acc.ledgerBalancePaise - entry.amountPaise,
+          updatedAt: now,
+        });
+      } else if (entry.entryType === "expense") {
+        tx.update(accRef, {
+          ledgerBalancePaise: acc.ledgerBalancePaise + entry.amountPaise,
+          updatedAt: now,
+        });
+      } else if (entry.entryType === "transfer" && entry.toAccountId) {
+        const toRef = instituteAccountsCollection().doc(entry.toAccountId);
+        const toSnap = await tx.get(toRef);
+        const toAcc = toSnap.data();
+        tx.update(accRef, {
+          ledgerBalancePaise: acc.ledgerBalancePaise + entry.amountPaise,
+          updatedAt: now,
+        });
+        if (toSnap.exists && toAcc) {
+          tx.update(toRef, {
+            ledgerBalancePaise: toAcc.ledgerBalancePaise - entry.amountPaise,
+            updatedAt: now,
+          });
+        }
+      }
+    }
+
+    tx.update(entryRef, {
+      status: "reversed",
+      reference: `${entry.reference ?? ""} [DELETED: ${reason.trim()}]`.trim(),
+    });
+
+    return entry;
+  });
+
+  await recordAuditLog({
+    action: "LEDGER_ENTRY_REVERSED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: institute.id,
+    targetId: entryId,
+    metadata: {
+      entryType: reversed.entryType,
+      amountPaise: reversed.amountPaise,
+      reason: reason.trim(),
+    },
+  });
+
+  return { reversed: true, entryId };
+}
+
+export async function cancelInstituteReceipt(
+  actor: SessionUser,
+  input: {
+    receiptId?: string | undefined;
+    paymentId?: string | undefined;
+    reason: string;
+  }
+) {
+  if (!hasStaffPermission(actor, "fees:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing fees:write permission.");
+  }
+  const institute = await resolveAuthorizedInstitute(actor);
+  const db = getAdminFirestore();
+
+  let targetReceiptId = input.receiptId?.trim() || "";
+  if (!targetReceiptId && input.paymentId) {
+    const byPayment = await feeReceiptsCollection()
+      .where("instituteId", "==", institute.id)
+      .where("paymentId", "==", input.paymentId)
+      .limit(1)
+      .get();
+    if (!byPayment.empty && byPayment.docs[0]) {
+      targetReceiptId = byPayment.docs[0].id;
+    }
+  }
+
+  if (!targetReceiptId) {
+    throw new AuthError(404, "RECEIPT_NOT_FOUND", "Linked fee receipt not found.");
+  }
+
+  const receiptRef = feeReceiptsCollection().doc(targetReceiptId);
   const now = new Date().toISOString();
   const reversalRef = `REV-${Date.now().toString().slice(-6)}`;
 
@@ -961,7 +1230,7 @@ export async function cancelInstituteReceipt(
       throw new AuthError(
         409,
         "ALREADY_REVERSED",
-        "This fee receipt has already been reversed."
+        "This fee transaction/receipt has already been reversed."
       );
     }
 
@@ -979,6 +1248,18 @@ export async function cancelInstituteReceipt(
     const nextPaidPaise = Math.max(0, plan.paidPaise - receipt.amountPaise);
     const netPayable = Math.max(0, plan.totalFeePaise - plan.discountPaise);
     const nextPendingPaise = Math.max(0, netPayable - nextPaidPaise);
+
+    if (receipt.accountId) {
+      const accRef = instituteAccountsCollection().doc(receipt.accountId);
+      const accSnap = await tx.get(accRef);
+      const acc = accSnap.data();
+      if (accSnap.exists && acc && acc.instituteId === institute.id) {
+        tx.update(accRef, {
+          ledgerBalancePaise: acc.ledgerBalancePaise - receipt.amountPaise,
+          updatedAt: now,
+        });
+      }
+    }
 
     tx.update(receiptRef, {
       status: "cancelled",
@@ -999,6 +1280,8 @@ export async function cancelInstituteReceipt(
       const paymentSnap = await tx.get(paymentRef);
       if (paymentSnap.exists) {
         tx.update(paymentRef, {
+          status: "reversed",
+          reversalRef,
           note: `${paymentSnap.data()?.note ?? ""} [REVERSED: ${reversalRef}]`.trim(),
         });
       }
@@ -1006,6 +1289,7 @@ export async function cancelInstituteReceipt(
 
     return {
       receiptId: receipt.id,
+      paymentId: receipt.paymentId,
       receiptNumber: receipt.receiptNumber,
       studentId: receipt.studentId,
       studentName: receipt.studentName,
@@ -1024,6 +1308,7 @@ export async function cancelInstituteReceipt(
     targetId: result.receiptId,
     metadata: {
       receiptNumber: result.receiptNumber,
+      paymentId: result.paymentId,
       reversalRef: result.reversalRef,
       amountPaise: result.amountPaise,
       reason: input.reason.trim(),
