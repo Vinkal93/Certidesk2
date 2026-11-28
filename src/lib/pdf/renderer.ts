@@ -1,36 +1,100 @@
 import "server-only";
+import { existsSync } from "node:fs";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import QRCode from "qrcode";
+import {
+  resolveApprovedPlaceholders,
+  type CertificatePlaceholderValues,
+} from "./certificate-placeholders";
+import { buildCertificateDocumentHtml } from "./certificate-html";
 import type {
   CertificateTemplateRecord,
   MarksheetTemplateRecord,
 } from "@/types/templates";
 import type { StudentMarksheetRecord } from "@/types/academic";
 
+export { resolveApprovedPlaceholders };
+
 const MM_TO_PT = 2.83465;
 
-const APPROVED_PLACEHOLDER_KEYS = [
-  "student_name",
-  "student_id",
-  "course_name",
-  "institute_name",
-  "certificate_number",
-  "issue_date",
-  "grade",
-  "result",
-  "exam_name",
-] as const;
+function findChromiumExecutable(): string | undefined {
+  const candidates = [
+    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/google-chrome",
+  ].filter((p): p is string => Boolean(p));
 
-export function resolveApprovedPlaceholders(
-  templateText: string,
-  values: Partial<Record<(typeof APPROVED_PLACEHOLDER_KEYS)[number], string>>
-): string {
-  return templateText.replace(/\{\{([a-z_]+)\}\}/g, (_match, key: string) => {
-    if ((APPROVED_PLACEHOLDER_KEYS as readonly string[]).includes(key)) {
-      return values[key as (typeof APPROVED_PLACEHOLDER_KEYS)[number]] ?? "";
+  return candidates.find((p) => existsSync(p));
+}
+
+async function renderCertificateWithChromium(params: {
+  template: CertificateTemplateRecord;
+  placeholders: CertificatePlaceholderValues;
+  verifyUrl: string;
+}): Promise<Uint8Array | null> {
+  const executablePath = findChromiumExecutable();
+  if (!executablePath) return null;
+
+  try {
+    const { chromium } = await import("playwright-core");
+    const qrDataUrl = await QRCode.toDataURL(params.verifyUrl, {
+      width: 480,
+      margin: 1,
+      errorCorrectionLevel: "M",
+    });
+    const html = buildCertificateDocumentHtml({
+      template: params.template,
+      placeholders: params.placeholders,
+      qrDataUrl,
+    });
+
+    const browser = await chromium.launch({
+      executablePath,
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+    try {
+      const page = await browser.newPage({
+        viewport: { width: 1123, height: 794 },
+        deviceScaleFactor: 2,
+      });
+      await page.setContent(html, { waitUntil: "load", timeout: 10000 });
+      await page.evaluate(async () => {
+        await Promise.race([
+          document.fonts.ready,
+          new Promise((resolve) => setTimeout(resolve, 4000)),
+        ]);
+        const imgs = Array.from(document.images);
+        await Promise.all(
+          imgs.map((img) =>
+            img.complete
+              ? Promise.resolve()
+              : new Promise<void>((resolve) => {
+                  img.onload = () => resolve();
+                  img.onerror = () => resolve();
+                })
+          )
+        );
+      });
+      const pdfBuffer = await page.pdf({
+        width: `${params.template.widthMm}mm`,
+        height: `${params.template.heightMm}mm`,
+        printBackground: true,
+        preferCSSPageSize: true,
+        margin: { top: "0mm", right: "0mm", bottom: "0mm", left: "0mm" },
+      });
+      return new Uint8Array(pdfBuffer);
+    } finally {
+      await browser.close();
     }
-    return "";
-  });
+  } catch {
+    return null;
+  }
 }
 
 function parseHexColor(hex: string) {
@@ -46,9 +110,16 @@ function parseHexColor(hex: string) {
 
 export async function renderCertificatePdfBuffer(params: {
   template: CertificateTemplateRecord;
-  placeholders: Partial<Record<(typeof APPROVED_PLACEHOLDER_KEYS)[number], string>>;
+  placeholders: CertificatePlaceholderValues;
   verifyUrl: string;
 }): Promise<Uint8Array> {
+  // Primary: Pixel-perfect Chromium HTML/CSS + Vector SVG + Google Fonts PDF
+  const chromiumPdf = await renderCertificateWithChromium(params);
+  if (chromiumPdf) {
+    return chromiumPdf;
+  }
+
+  // Fallback: Vector pdf-lib renderer (used when no Chromium binary is available)
   const { template, placeholders, verifyUrl } = params;
   const pdfDoc = await PDFDocument.create();
   const pageWidthPt = (template.orientation === "landscape" ? 297 : 210) * MM_TO_PT;
@@ -61,7 +132,7 @@ export async function renderCertificatePdfBuffer(params: {
   const timesBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
   const courier = await pdfDoc.embedFont(StandardFonts.Courier);
 
-  // Background & Border
+  // Background & Double Gold Border
   page.drawRectangle({
     x: 0,
     y: 0,
@@ -70,25 +141,34 @@ export async function renderCertificatePdfBuffer(params: {
     color: parseHexColor(template.backgroundColorHex),
   });
   page.drawRectangle({
-    x: 10 * MM_TO_PT,
-    y: 10 * MM_TO_PT,
-    width: pageWidthPt - 20 * MM_TO_PT,
-    height: pageHeightPt - 20 * MM_TO_PT,
-    borderColor: parseHexColor(template.borderColorHex),
+    x: 8 * MM_TO_PT,
+    y: 8 * MM_TO_PT,
+    width: pageWidthPt - 16 * MM_TO_PT,
+    height: pageHeightPt - 16 * MM_TO_PT,
+    borderColor: parseHexColor(template.accentColorHex || template.borderColorHex),
     borderWidth: 2,
+  });
+  page.drawRectangle({
+    x: 10.5 * MM_TO_PT,
+    y: 10.5 * MM_TO_PT,
+    width: pageWidthPt - 21 * MM_TO_PT,
+    height: pageHeightPt - 21 * MM_TO_PT,
+    borderColor: parseHexColor(template.accentColorHex || template.borderColorHex),
+    borderWidth: 0.9,
   });
 
   if (template.watermarkText) {
     page.drawText(template.watermarkText, {
       x: pageWidthPt * 0.28,
       y: pageHeightPt * 0.48,
-      size: 42,
+      size: 38,
       font: helveticaBold,
       color: rgb(0.92, 0.94, 0.97),
     });
   }
 
   for (const el of template.elements) {
+    if (el.visible === false) continue;
     const xPt = el.xMm * MM_TO_PT;
     const widthPt = el.widthMm * MM_TO_PT;
     const yPtTop = el.yMm * MM_TO_PT;
@@ -105,7 +185,7 @@ export async function renderCertificatePdfBuffer(params: {
 
     if (el.type === "qr_code") {
       const qrPng = await QRCode.toBuffer(verifyUrl, {
-        width: 240,
+        width: 300,
         margin: 1,
       });
       const qrImage = await pdfDoc.embedPng(qrPng);
@@ -119,9 +199,17 @@ export async function renderCertificatePdfBuffer(params: {
       continue;
     }
 
+    if (el.type === "image" || el.type === "medal" || el.type === "seal") {
+      continue;
+    }
+
     const resolvedText = resolveApprovedPlaceholders(el.content, placeholders);
+    if (!resolvedText.trim()) continue;
     const font =
-      el.fontFamily === "TimesRoman"
+      el.fontFamily === "TimesRoman" ||
+      el.fontFamily === "Cinzel Decorative" ||
+      el.fontFamily === "Cormorant Garamond" ||
+      el.fontFamily === "Libre Baskerville"
         ? el.fontWeight === "bold"
           ? timesBold
           : times
@@ -149,6 +237,25 @@ export async function renderCertificatePdfBuffer(params: {
   }
 
   return pdfDoc.save();
+}
+
+export async function renderBulkCertificatesPdfBuffer(
+  items: Array<{
+    template: CertificateTemplateRecord;
+    placeholders: CertificatePlaceholderValues;
+    verifyUrl: string;
+  }>
+): Promise<Uint8Array> {
+  const merged = await PDFDocument.create();
+  for (const item of items) {
+    const singleBytes = await renderCertificatePdfBuffer(item);
+    const singleDoc = await PDFDocument.load(singleBytes);
+    const copiedPages = await merged.copyPages(singleDoc, singleDoc.getPageIndices());
+    for (const p of copiedPages) {
+      merged.addPage(p);
+    }
+  }
+  return merged.save();
 }
 
 export async function renderMarksheetPdfBuffer(params: {

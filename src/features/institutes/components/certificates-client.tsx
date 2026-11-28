@@ -2,7 +2,14 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { AlertCircle, Award, CheckCircle2, ExternalLink, Printer } from "lucide-react";
+import {
+  AlertCircle,
+  Award,
+  CheckCircle2,
+  Download,
+  ExternalLink,
+  Printer,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -32,6 +39,7 @@ export function CertificatesClient({
   );
   const [grade, setGrade] = React.useState("A+");
   const [loading, setLoading] = React.useState(false);
+  const [selectedCertIds, setSelectedCertIds] = React.useState<string[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
 
@@ -198,16 +206,29 @@ export function CertificatesClient({
         )}
 
         <Card className={canIssue ? "lg:col-span-7" : "lg:col-span-12"}>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle>Certificate Registry ({certificates.length})</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="h-4 w-4" aria-hidden="true" />}
-              onClick={() => window.print()}
-            >
-              Print Registry
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedCertIds.length > 0 ? (
+                <a
+                  href={`/api/institute/certificates/${selectedCertIds[0]}/pdf?bulkIds=${encodeURIComponent(
+                    selectedCertIds.join(",")
+                  )}`}
+                  className={buttonVariants({ variant: "primary", size: "sm" })}
+                >
+                  <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                  Bulk PDF ({selectedCertIds.length})
+                </a>
+              ) : null}
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Printer className="h-4 w-4" aria-hidden="true" />}
+                onClick={() => window.print()}
+              >
+                Print Registry
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {certificates.length === 0 ? (
@@ -219,24 +240,41 @@ export function CertificatesClient({
                     key={cert.id}
                     className="border-border flex flex-col justify-between gap-3 rounded-xl border p-4 sm:flex-row sm:items-center"
                   >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-foreground font-mono text-xs font-semibold">
-                          {cert.certificateNumber}
-                        </span>
-                        <Badge variant={cert.status === "issued" ? "success" : "danger"}>
-                          {cert.status}
-                        </Badge>
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${cert.certificateNumber}`}
+                        checked={selectedCertIds.includes(cert.id)}
+                        onChange={(e) =>
+                          setSelectedCertIds((prev) =>
+                            e.target.checked
+                              ? [...prev, cert.id]
+                              : prev.filter((id) => id !== cert.id)
+                          )
+                        }
+                        className="mt-1"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-foreground font-mono text-xs font-semibold">
+                            {cert.certificateNumber}
+                          </span>
+                          <Badge
+                            variant={cert.status === "issued" ? "success" : "danger"}
+                          >
+                            {cert.status}
+                          </Badge>
+                        </div>
+                        <p className="text-foreground mt-1 text-sm font-medium">
+                          {cert.studentName} &bull; {cert.courseName} ({cert.grade})
+                        </p>
+                        <p className="text-muted font-mono text-xs">
+                          Verification ID: {cert.verificationId} &bull; Template:{" "}
+                          {cert.templateId}
+                        </p>
                       </div>
-                      <p className="text-foreground mt-1 text-sm font-medium">
-                        {cert.studentName} &bull; {cert.courseName} ({cert.grade})
-                      </p>
-                      <p className="text-muted font-mono text-xs">
-                        Verification ID: {cert.verificationId} &bull; Template:{" "}
-                        {cert.templateId}
-                      </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
                       {cert.status === "issued" && (
                         <div className="hidden sm:block">
                           <Awards
@@ -250,6 +288,22 @@ export function CertificatesClient({
                           />
                         </div>
                       )}
+                      <a
+                        href={`/api/institute/certificates/${cert.id}/pdf?download=1`}
+                        className={buttonVariants({ variant: "primary", size: "sm" })}
+                      >
+                        <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                        Download PDF
+                      </a>
+                      <a
+                        href={`/api/institute/certificates/${cert.id}/pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                      >
+                        <Printer className="h-3.5 w-3.5" aria-hidden="true" />
+                        Print
+                      </a>
                       <Link
                         href={`/verify/${cert.verificationId}`}
                         target="_blank"

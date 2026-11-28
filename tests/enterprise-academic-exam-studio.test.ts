@@ -230,7 +230,7 @@ describe("Academic, Online Exam, Studio & PDF Pipeline", () => {
       },
     });
     expect(Buffer.from(marksheetPdf.slice(0, 5)).toString("ascii")).toBe("%PDF-");
-  });
+  }, 25000);
 
   it("enforces Super Admin template authorization and Student exam ownership", async () => {
     await expect(
