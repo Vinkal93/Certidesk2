@@ -6,11 +6,20 @@ vi.mock("@/lib/firebase/admin", () => ({
   getAdminFirestore: () => ({}),
 }));
 
-import { buildSbciNavyGoldTemplate } from "@/lib/pdf/certificate-presets";
+import {
+  buildSbciNavyGoldTemplate,
+  buildImperialBurgundyTemplate,
+  buildEmeraldLuxuryTemplate,
+  buildCorporateSlateTemplate,
+  buildObsidianGoldTemplate,
+  CERTIFICATE_PRESETS_CATALOG,
+} from "@/lib/pdf/certificate-presets";
 import {
   buildCertificateDownloadFilename,
   resolveApprovedPlaceholders,
+  CERTIFICATE_SAMPLE_PROFILES,
 } from "@/lib/pdf/certificate-placeholders";
+import { buildCertificateCanvasInnerHtml } from "@/lib/pdf/certificate-html";
 import { validateCertificateBeforeExport } from "@/lib/pdf/certificate-validation";
 import { renderCertificatePdfBuffer } from "@/lib/pdf/renderer";
 
@@ -119,4 +128,64 @@ describe("CertiDesk Pro: Certificate Studio & Pixel-Perfect PDF Engine", () => {
     expect(height).toBeGreaterThan(590);
     expect(height).toBeLessThan(602);
   }, 30000);
+
+  it("loads and validates all 5 professional presets from catalog without boundary errors", () => {
+    expect(CERTIFICATE_PRESETS_CATALOG).toHaveLength(5);
+
+    const presets = [
+      buildSbciNavyGoldTemplate(),
+      buildImperialBurgundyTemplate(),
+      buildEmeraldLuxuryTemplate(),
+      buildCorporateSlateTemplate(),
+      buildObsidianGoldTemplate(),
+    ];
+
+    for (const preset of presets) {
+      expect(preset.widthMm).toBe(297);
+      expect(preset.heightMm).toBe(210);
+      expect(preset.elements.length).toBeGreaterThanOrEqual(15);
+
+      const res = validateCertificateBeforeExport({
+        template: preset,
+        placeholders: CERTIFICATE_SAMPLE_PROFILES[0]!.values,
+        verifyUrl: "https://certidesk.sbci.online/verify/PRESET_VALIDATE",
+      });
+      expect(res.valid).toBe(true);
+      expect(res.errors).toHaveLength(0);
+    }
+  });
+
+  it("renders watermark and photo placeholder inside HTML canvas", () => {
+    const preset = buildImperialBurgundyTemplate();
+    const html = buildCertificateCanvasInnerHtml({
+      template: {
+        ...preset,
+        watermarkText: "CONFIDENTIAL DIPLOMA",
+        elements: [
+          ...preset.elements,
+          {
+            id: "el_test_photo",
+            type: "image",
+            label: "Student Photo",
+            content: "{{student_photo}}",
+            xMm: 20,
+            yMm: 20,
+            widthMm: 25,
+            heightMm: 30,
+            fontFamily: "Montserrat",
+            fontSizePt: 8,
+            fontWeight: "bold",
+            colorHex: "#000",
+            align: "center",
+          },
+        ],
+      },
+      placeholders: CERTIFICATE_SAMPLE_PROFILES[0]!.values,
+      qrDataUrl: "data:image/png;base64,mockQr",
+    });
+
+    expect(html).toContain("CONFIDENTIAL DIPLOMA");
+    expect(html).toContain("PHOTO");
+    expect(html).toContain("certidesk-a4-canvas");
+  });
 });

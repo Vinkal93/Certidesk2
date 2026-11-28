@@ -76,15 +76,16 @@ function renderSvgCornerDecorations(navyHex: string, goldHex: string): string {
   </svg>`;
 }
 
-function renderSvgGuillocheBg(): string {
+function renderSvgGuillocheBg(isDark = false, goldHex = "#D4AF37"): string {
+  const stroke = isDark ? "rgba(245, 222, 131, 0.14)" : "#E8EDF5";
   return `
   <svg viewBox="0 0 297 210" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0.42;">
-    <path d="M 0 55 Q 75 25, 150 55 T 297 55" fill="none" stroke="#E8EDF5" stroke-width="0.6"/>
-    <path d="M 0 62 Q 75 32, 150 62 T 297 62" fill="none" stroke="#E8EDF5" stroke-width="0.6"/>
-    <path d="M 0 69 Q 75 39, 150 69 T 297 69" fill="none" stroke="#E8EDF5" stroke-width="0.6"/>
-    <path d="M 0 142 Q 75 172, 150 142 T 297 142" fill="none" stroke="#E8EDF5" stroke-width="0.6"/>
-    <path d="M 0 149 Q 75 179, 150 149 T 297 149" fill="none" stroke="#E8EDF5" stroke-width="0.6"/>
-    <path d="M 0 156 Q 75 186, 150 156 T 297 156" fill="none" stroke="#E8EDF5" stroke-width="0.6"/>
+    <path d="M 0 55 Q 75 25, 150 55 T 297 55" fill="none" stroke="${stroke}" stroke-width="0.6"/>
+    <path d="M 0 62 Q 75 32, 150 62 T 297 62" fill="none" stroke="${stroke}" stroke-width="0.6"/>
+    <path d="M 0 69 Q 75 39, 150 69 T 297 69" fill="none" stroke="${stroke}" stroke-width="0.6"/>
+    <path d="M 0 142 Q 75 172, 150 142 T 297 142" fill="none" stroke="${stroke}" stroke-width="0.6"/>
+    <path d="M 0 149 Q 75 179, 150 149 T 297 149" fill="none" stroke="${stroke}" stroke-width="0.6"/>
+    <path d="M 0 156 Q 75 186, 150 156 T 297 156" fill="none" stroke="${stroke}" stroke-width="0.6"/>
   </svg>`;
 }
 
@@ -214,10 +215,19 @@ export function renderCertificateElementHtml(params: {
       imgUrl &&
       (imgUrl.startsWith("http") || imgUrl.startsWith("data:") || imgUrl.startsWith("/"))
     ) {
-      return `<div style="${baseBoxStyle}display:flex;align-items:center;justify-content:center;"><img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(el.label)}" style="max-width:100%;max-height:100%;object-fit:contain;" /></div>`;
+      return `<div style="${baseBoxStyle}display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:4px;border:1.5px solid ${escapeHtml(goldHex)};"><img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(el.label)}" style="width:100%;height:100%;object-fit:cover;" /></div>`;
     }
     if (el.content.includes("institute_logo")) {
       return `<div style="${baseBoxStyle}">${renderDefaultLogoSvg(navyHex, goldHex)}</div>`;
+    }
+    if (el.content.includes("student_photo") || el.label.toLowerCase().includes("photo")) {
+      return `<div style="${baseBoxStyle}display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(241,245,249,0.9);border:1.5px solid ${escapeHtml(goldHex)};border-radius:4px;box-shadow:inset 0 0 4px rgba(0,0,0,0.06);">
+        <svg viewBox="0 0 24 24" style="width:45%;height:45%;fill:none;stroke:${escapeHtml(navyHex)};stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span style="font-size:5.5pt;font-family:'Montserrat',sans-serif;font-weight:700;color:${escapeHtml(navyHex)};margin-top:1mm;letter-spacing:0.4px;">PHOTO</span>
+      </div>`;
     }
     return `<div style="${baseBoxStyle}border-bottom:1px solid #334155;"></div>`;
   }
@@ -272,7 +282,23 @@ export function buildCertificateCanvasInnerHtml(params: {
   const navyHex = template.secondaryColorHex || "#0C2340";
   const goldHex = template.accentColorHex || "#D4AF37";
 
-  const guilloche = template.showGuillocheBg !== false ? renderSvgGuillocheBg() : "";
+  const isDarkBg =
+    template.backgroundColorHex?.toLowerCase().startsWith("#0") ||
+    template.backgroundColorHex?.toLowerCase().startsWith("#1");
+  const guilloche =
+    template.showGuillocheBg !== false
+      ? renderSvgGuillocheBg(isDarkBg, goldHex)
+      : "";
+
+  const watermarkHtml = template.watermarkText?.trim()
+    ? `
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:1;overflow:hidden;">
+      <div style="transform:rotate(-28deg);font-family:'Montserrat',sans-serif;font-size:30pt;font-weight:900;letter-spacing:10px;text-transform:uppercase;color:${isDarkBg ? "#FFFFFF" : goldHex};opacity:${template.watermarkOpacity ?? 0.04};white-space:nowrap;user-select:none;">
+        ${escapeHtml(template.watermarkText)}
+      </div>
+    </div>`
+    : "";
+
   const corners =
     template.showCornerDecorations !== false
       ? renderSvgCornerDecorations(navyHex, goldHex)
@@ -300,6 +326,7 @@ export function buildCertificateCanvasInnerHtml(params: {
   return `
   <div class="certidesk-a4-canvas" style="position:relative;width:${template.widthMm}mm;height:${template.heightMm}mm;background:${escapeHtml(template.backgroundColorHex)};overflow:hidden;box-sizing:border-box;">
     ${guilloche}
+    ${watermarkHtml}
     ${doubleGoldBorder}
     ${corners}
     ${elementsHtml}

@@ -44,7 +44,14 @@ export interface CertificateTemplateElement {
 }
 
 export type CertificatePresetKey =
-  "sbci_navy_gold" | "classic_academic" | "modern_minimal" | "custom";
+  | "sbci_navy_gold"
+  | "imperial_burgundy"
+  | "emerald_luxury"
+  | "corporate_slate"
+  | "obsidian_gold"
+  | "classic_academic"
+  | "modern_minimal"
+  | "custom";
 
 export interface CertificateTemplateRecord {
   id: string;
@@ -61,6 +68,7 @@ export interface CertificateTemplateRecord {
   showCornerDecorations?: boolean | undefined;
   showGuillocheBg?: boolean | undefined;
   watermarkText: string;
+  watermarkOpacity?: number | undefined;
   elements: CertificateTemplateElement[];
   status: "draft" | "published" | "archived";
   version: number;
