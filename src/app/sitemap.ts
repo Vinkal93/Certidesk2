@@ -20,6 +20,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/faq", changeFrequency: "monthly", priority: 0.75 },
     { path: "/blog", changeFrequency: "weekly", priority: 0.8 },
     { path: "/about", changeFrequency: "monthly", priority: 0.7 },
+    { path: "/vinkal-prajapati", changeFrequency: "monthly", priority: 0.85 },
     { path: "/contact", changeFrequency: "monthly", priority: 0.7 },
     { path: "/legal", changeFrequency: "monthly", priority: 0.6 },
     { path: "/privacy", changeFrequency: "monthly", priority: 0.5 },

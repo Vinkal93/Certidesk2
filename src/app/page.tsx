@@ -7,9 +7,7 @@ import { buildPublicMetadata } from "@/lib/seo/metadata";
 import {
   JsonLd,
   buildFaqJsonLd,
-  buildOrganizationJsonLd,
-  buildSoftwareApplicationJsonLd,
-  buildWebSiteJsonLd,
+  buildKnowledgeGraphJsonLd,
 } from "@/components/seo/json-ld";
 import { PageContainer, SectionHeader } from "@/components/layout";
 import { Container } from "@/components/ui/container";
@@ -41,6 +39,8 @@ export const metadata: Metadata = buildPublicMetadata({
     "certificate generation software",
     "marksheet generator software",
     "coaching institute software India",
+    "Vinkal Prajapati",
+    "SBCI Computer Institute",
   ],
 });
 
@@ -48,9 +48,7 @@ export default async function HomePage() {
   const publicPlans = await listPublicSubscriptionPlans();
   return (
     <PageContainer>
-      <JsonLd data={buildOrganizationJsonLd()} />
-      <JsonLd data={buildWebSiteJsonLd()} />
-      <JsonLd data={buildSoftwareApplicationJsonLd()} />
+      <JsonLd data={buildKnowledgeGraphJsonLd()} />
       <JsonLd data={buildFaqJsonLd(faqItems)} />
 
       {/* 2. Hero */}
