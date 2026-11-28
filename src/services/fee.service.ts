@@ -117,46 +117,55 @@ export async function collectStudentFeePayment(
   const receiptNo = `RCPT-${Date.now().toString().slice(-6)}`;
   const now = new Date().toISOString();
 
-  return db.runTransaction(async (tx) => {
-    const planSnap = await tx.get(planRef);
-    const plan = planSnap.data();
+  return db
+    .runTransaction(async (tx) => {
+      const planSnap = await tx.get(planRef);
+      const plan = planSnap.data();
 
-    if (!planSnap.exists || !plan || plan.instituteId !== institute.id) {
-      throw new AuthError(404, "FEE_PLAN_NOT_FOUND", "Student fee plan not found.");
-    }
-    if (amountPaise > plan.pendingPaise) {
-      throw new AuthError(
-        400,
-        "OVERPAYMENT",
-        `Payment exceeds pending balance (₹${(plan.pendingPaise / 100).toFixed(2)}).`
+      if (!planSnap.exists || !plan || plan.instituteId !== institute.id) {
+        throw new AuthError(404, "FEE_PLAN_NOT_FOUND", "Student fee plan not found.");
+      }
+      if (amountPaise > plan.pendingPaise) {
+        throw new AuthError(
+          400,
+          "OVERPAYMENT",
+          `Payment exceeds pending balance (₹${(plan.pendingPaise / 100).toFixed(2)}).`
+        );
+      }
+
+      const updatedPlan: StudentFeePlanRecord = {
+        ...plan,
+        paidPaise: plan.paidPaise + amountPaise,
+        pendingPaise: plan.pendingPaise - amountPaise,
+        updatedAt: now,
+      };
+
+      const paymentRecord: FeePaymentRecord = {
+        id: paymentId,
+        receiptNo,
+        instituteId: institute.id,
+        feePlanId: plan.id,
+        studentId: plan.studentId,
+        studentName: plan.studentName,
+        amountPaise,
+        paymentMode: input.paymentMode,
+        note: input.note,
+        collectedByUid: actor.uid,
+        paidAt: now,
+        createdAt: now,
+      };
+
+      tx.set(planRef, updatedPlan);
+      tx.set(feePaymentsCol().doc(paymentId), paymentRecord);
+
+      return { plan: updatedPlan, payment: paymentRecord };
+    })
+    .then(async (res) => {
+      const { syncStudentFeeRemindersAfterPayment } =
+        await import("./fee-reminder.service");
+      await syncStudentFeeRemindersAfterPayment(institute.id, res.plan.studentId).catch(
+        () => undefined
       );
-    }
-
-    const updatedPlan: StudentFeePlanRecord = {
-      ...plan,
-      paidPaise: plan.paidPaise + amountPaise,
-      pendingPaise: plan.pendingPaise - amountPaise,
-      updatedAt: now,
-    };
-
-    const paymentRecord: FeePaymentRecord = {
-      id: paymentId,
-      receiptNo,
-      instituteId: institute.id,
-      feePlanId: plan.id,
-      studentId: plan.studentId,
-      studentName: plan.studentName,
-      amountPaise,
-      paymentMode: input.paymentMode,
-      note: input.note,
-      collectedByUid: actor.uid,
-      paidAt: now,
-      createdAt: now,
-    };
-
-    tx.set(planRef, updatedPlan);
-    tx.set(feePaymentsCol().doc(paymentId), paymentRecord);
-
-    return { plan: updatedPlan, payment: paymentRecord };
-  });
+      return res;
+    });
 }

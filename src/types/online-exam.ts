@@ -43,6 +43,7 @@ export type OnlineExamStatus =
   | "evaluation_pending"
   | "results_ready"
   | "results_declared"
+  | "cancelled"
   | "archived";
 
 export interface OnlineExamRecord {
@@ -53,9 +54,11 @@ export interface OnlineExamRecord {
   description: string;
   courseId: string;
   courseName: string;
+  questionPoolTag?: string;
   batchIds: string[];
   examType: "mcq" | "mixed";
   instructions: string;
+  questionCount?: number | undefined;
   maxMarks: number;
   passingMarks: number;
   durationMinutes: number;
@@ -67,9 +70,12 @@ export interface OnlineExamRecord {
   randomizeQuestions: boolean;
   randomizeOptions: boolean;
   negativeMarkingEnabled: boolean;
+  negativeMarkingPerQuestion?: number;
+  allowStudentAnswerReview?: boolean;
   status: OnlineExamStatus;
   resultsDeclaredAt: string | null;
   resultsDeclaredByUid: string | null;
+  cancelledAt?: string | null;
   resultVersion: number;
   createdBy: string;
   createdAt: string;
@@ -122,11 +128,15 @@ export interface ExamResultRecord {
   correctCount: number;
   incorrectCount: number;
   unansweredCount: number;
+  attemptedCount?: number;
   obtainedMarks: number;
   maxMarks: number;
   percentage: number;
   grade: string;
   passed: boolean;
+  timeTakenSeconds?: number;
+  submittedAt?: string | null;
+  rank?: number;
   evaluationStatus: "evaluated" | "pending_review";
   gradingVersion: number;
   declared: boolean;
@@ -147,4 +157,42 @@ export interface ResultRevisionRecord {
   reason: string;
   actorUid: string;
   createdAt: string;
+}
+
+export interface ExamQuestionAnalysisItem {
+  questionId: string;
+  questionText: string;
+  subject: string;
+  topic: string;
+  difficulty: QuestionDifficulty;
+  options: QuestionOption[];
+  selectedOptionIds: string[];
+  correctOptionIds: string[];
+  isCorrect: boolean;
+  isAttempted: boolean;
+  marksAwarded: number;
+  maxMarks: number;
+  explanation: string;
+}
+
+export interface BatchComparisonRow {
+  batchId: string;
+  batchName: string;
+  submittedCount: number;
+  passedCount: number;
+  passPercentage: number;
+  averageMarks: number;
+  highestMarks: number;
+  lowestMarks: number;
+}
+
+export interface OnlineExamAnalyticsSummary {
+  totalResults: number;
+  submittedAttempts: number;
+  inProgressAttempts: number;
+  highestMarks: number;
+  lowestMarks: number;
+  averageMarks: number;
+  passPercentage: number;
+  batchComparison: BatchComparisonRow[];
 }

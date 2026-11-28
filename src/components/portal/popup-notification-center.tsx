@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Bell, CheckCheck, Megaphone, X } from "lucide-react";
+import { AlertTriangle, Bell, CheckCheck, IndianRupee, Megaphone, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -10,6 +10,7 @@ import type {
   PopupMessageCategory,
   RecipientPopupMessage,
 } from "@/services/popup-messages.service";
+import type { FeeReminderDeliveryRecord } from "@/types/fee-reminder";
 
 interface Props {
   extraAlert?: {
@@ -47,24 +48,62 @@ export function PopupNotificationCenter({
 }: Props) {
   const [open, setOpen] = React.useState(false);
   const [messages, setMessages] = React.useState<RecipientPopupMessage[]>([]);
+  const [feeReminders, setFeeReminders] = React.useState<FeeReminderDeliveryRecord[]>([]);
   const [activePopup, setActivePopup] = React.useState<RecipientPopupMessage | null>(
     null
   );
+  const [activeFeeReminder, setActiveFeeReminder] =
+    React.useState<FeeReminderDeliveryRecord | null>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     let active = true;
     fetch("/api/popup-messages")
       .then((res) => (res.ok ? res.json() : null))
-      .then((json: { data?: { messages?: RecipientPopupMessage[] } } | null) => {
-        if (!active || !json?.data?.messages) return;
-        const list = json.data.messages;
-        setMessages(list);
-        const firstUnread = list.find((m) => !m.isRead) ?? null;
-        if (firstUnread) {
-          setActivePopup(firstUnread);
+      .then(
+        (
+          json: {
+            data?: {
+              messages?: RecipientPopupMessage[];
+              feeReminders?: FeeReminderDeliveryRecord[];
+            };
+          } | null
+        ) => {
+          if (!active || !json?.data) return;
+          const list = json.data.messages ?? [];
+          const reminders = json.data.feeReminders ?? [];
+          setMessages(list);
+          setFeeReminders(reminders);
+
+          let shownIds: string[] = [];
+          try {
+            shownIds = JSON.parse(
+              window.sessionStorage.getItem("certidesk_shown_fee_reminders") ?? "[]"
+            ) as string[];
+          } catch {
+            shownIds = [];
+          }
+
+          const nextReminder = reminders.find((r) => !shownIds.includes(r.id)) ?? null;
+          if (nextReminder) {
+            setActiveFeeReminder(nextReminder);
+            try {
+              window.sessionStorage.setItem(
+                "certidesk_shown_fee_reminders",
+                JSON.stringify([...shownIds, nextReminder.id])
+              );
+            } catch {
+              // ignore storage errors
+            }
+            return;
+          }
+
+          const firstUnread = list.find((m) => !m.isRead) ?? null;
+          if (firstUnread) {
+            setActivePopup(firstUnread);
+          }
         }
-      })
+      )
       .catch(() => undefined);
 
     return () => {
@@ -108,8 +147,34 @@ export function PopupNotificationCenter({
     await markIdsRead([id]);
   }
 
+  async function handleFeeReminderAction(
+    deliveryId: string,
+    reminderAction: "mark_read" | "dismiss" | "remind_later"
+  ) {
+    setActiveFeeReminder(null);
+    setFeeReminders((prev) =>
+      reminderAction === "dismiss" || reminderAction === "remind_later"
+        ? prev.filter((r) => r.id !== deliveryId)
+        : prev.map((r) => (r.id === deliveryId ? { ...r, status: "read" } : r))
+    );
+    await fetch("/api/popup-messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "fee_reminder_action",
+        deliveryId,
+        reminderAction,
+      }),
+    }).catch(() => undefined);
+  }
+
   const unreadMessages = messages.filter((m) => !m.isRead);
-  const totalBadge = unreadMessages.length + extraUnreadCount + (extraAlert ? 1 : 0);
+  const unreadFeeReminders = feeReminders.filter((r) => r.status === "delivered");
+  const totalBadge =
+    unreadMessages.length +
+    unreadFeeReminders.length +
+    extraUnreadCount +
+    (extraAlert ? 1 : 0);
 
   return (
     <>
@@ -288,6 +353,127 @@ export function PopupNotificationCenter({
               <Button type="button" variant="outline" size="sm" onClick={dismissPopup}>
                 Acknowledge &amp; Close
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Automated Fee Reminder Popup Modal */}
+      {activeFeeReminder && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="fee-reminder-popup-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs"
+        >
+          <div className="border-border bg-background w-full max-w-md rounded-2xl border p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                    activeFeeReminder.reminderType === "overdue"
+                      ? "bg-danger-soft text-danger"
+                      : "bg-warning-soft text-warning"
+                  }`}
+                >
+                  {activeFeeReminder.reminderType === "overdue" ? (
+                    <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                  ) : (
+                    <IndianRupee className="h-5 w-5" aria-hidden="true" />
+                  )}
+                </span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Badge
+                      variant={
+                        activeFeeReminder.reminderType === "overdue"
+                          ? "danger"
+                          : activeFeeReminder.reminderType === "due"
+                            ? "warning"
+                            : "primary"
+                      }
+                    >
+                      {activeFeeReminder.reminderType.toUpperCase()} FEE REMINDER
+                    </Badge>
+                  </div>
+                  <p className="text-muted mt-1 text-[11px]">
+                    {activeFeeReminder.monthLabel} · Due {activeFeeReminder.dueDate}
+                  </p>
+                </div>
+              </div>
+              {activeFeeReminder.allowDismiss ? (
+                <button
+                  type="button"
+                  aria-label="Close fee reminder"
+                  onClick={() =>
+                    void handleFeeReminderAction(activeFeeReminder.id, "mark_read")
+                  }
+                  className="text-muted hover:text-foreground cursor-pointer rounded-lg p-1"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+
+            <h2
+              id="fee-reminder-popup-title"
+              className="text-foreground mt-4 text-lg font-bold tracking-tight"
+            >
+              {activeFeeReminder.title}
+            </h2>
+            <p className="text-muted mt-2 text-sm leading-relaxed whitespace-pre-line">
+              {activeFeeReminder.message}
+            </p>
+
+            <div className="border-border bg-surface mt-4 grid grid-cols-2 gap-2 rounded-xl border p-3 text-xs">
+              <div>
+                <p className="text-muted text-[10px]">Pending Amount</p>
+                <p className="text-danger text-base font-bold tabular-nums">
+                  ₹{(activeFeeReminder.pendingAmountPaise / 100).toFixed(0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted text-[10px]">Due Date</p>
+                <p className="text-foreground text-sm font-semibold">
+                  {activeFeeReminder.dueDate}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+              <Link
+                href="/student/fees"
+                onClick={() =>
+                  void handleFeeReminderAction(activeFeeReminder.id, "mark_read")
+                }
+                className="bg-primary hover:bg-primary-dark inline-flex h-9 items-center rounded-lg px-4 text-xs font-semibold text-white"
+              >
+                View Fee Details &amp; Pay
+              </Link>
+              {activeFeeReminder.allowRemindLater ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    void handleFeeReminderAction(activeFeeReminder.id, "remind_later")
+                  }
+                >
+                  Remind Me Later
+                </Button>
+              ) : null}
+              {activeFeeReminder.allowDismiss ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    void handleFeeReminderAction(activeFeeReminder.id, "dismiss")
+                  }
+                >
+                  Dismiss
+                </Button>
+              ) : null}
             </div>
           </div>
         </div>

@@ -12,8 +12,10 @@ const createExamSchema = z.object({
   courseName: z.string().min(1),
   batchIds: z.array(z.string().min(1)).min(1),
   instructions: z.string().trim().max(2000).optional(),
-  maxMarks: z.coerce.number().positive().max(1000),
-  passingMarks: z.coerce.number().min(0).max(1000),
+  questionCount: z.coerce.number().int().min(1).max(500).optional(),
+  questionPoolTag: z.string().trim().max(120).optional(),
+  maxMarks: z.coerce.number().positive().max(2000),
+  passingMarks: z.coerce.number().min(0).max(2000),
   durationMinutes: z.coerce.number().int().min(5).max(360),
   windowStartAt: z.string().min(10),
   windowEndAt: z.string().min(10),
@@ -22,6 +24,8 @@ const createExamSchema = z.object({
   randomizeQuestions: z.boolean().optional(),
   randomizeOptions: z.boolean().optional(),
   negativeMarkingEnabled: z.boolean().optional(),
+  negativeMarkingPerQuestion: z.coerce.number().min(0).max(50).optional(),
+  allowStudentAnswerReview: z.boolean().optional(),
 });
 
 export async function GET() {

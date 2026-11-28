@@ -9,6 +9,10 @@ import {
   sendInstitutePopupMessage,
   sendSuperAdminPopupMessage,
 } from "@/services/popup-messages.service";
+import {
+  actOnStudentFeeReminder,
+  listActiveStudentFeeReminders,
+} from "@/services/fee-reminder.service";
 
 const SendPopupSchema = z.object({
   action: z.literal("send"),
@@ -33,6 +37,12 @@ const MarkReadSchema = z.object({
   messageIds: z.array(z.string().min(2)).min(1).max(25),
 });
 
+const FeeReminderActionSchema = z.object({
+  action: z.literal("fee_reminder_action"),
+  deliveryId: z.string().min(2),
+  reminderAction: z.enum(["mark_read", "dismiss", "remind_later"]),
+});
+
 export async function GET(req: NextRequest) {
   try {
     const user = await requireSessionUser();
@@ -41,10 +51,16 @@ export async function GET(req: NextRequest) {
       const sent = await listSentPopupMessages(user);
       return jsonOk({ messages: sent });
     }
-    const messages = await listPopupMessagesForRecipient(user);
+    const [messages, feeReminders] = await Promise.all([
+      listPopupMessagesForRecipient(user),
+      user.role === "student" ? listActiveStudentFeeReminders(user) : Promise.resolve([]),
+    ]);
     return jsonOk({
       messages,
-      unreadCount: messages.filter((m) => !m.isRead).length,
+      feeReminders,
+      unreadCount:
+        messages.filter((m) => !m.isRead).length +
+        feeReminders.filter((r) => r.status === "delivered").length,
     });
   } catch (error) {
     return handleApiError(error);
@@ -60,6 +76,16 @@ export async function POST(req: NextRequest) {
       const parsed = MarkReadSchema.parse(raw);
       const res = await markPopupMessageRead(user, parsed.messageIds);
       return jsonOk(res);
+    }
+
+    if (raw?.action === "fee_reminder_action") {
+      const parsed = FeeReminderActionSchema.parse(raw);
+      const reminder = await actOnStudentFeeReminder(
+        user,
+        parsed.deliveryId,
+        parsed.reminderAction
+      );
+      return jsonOk({ reminder });
     }
 
     const parsed = SendPopupSchema.parse(raw);
