@@ -73,7 +73,7 @@ export const heroContent = {
   description:
     "CertiDesk unifies student admissions, batch scheduling, attendance tracking, fee & dues ledgers, subject-wise marksheets, and verifiable certificates—built for single campuses and multi-branch networks.",
   primaryCta: { label: "Get Started", href: "/register" },
-  secondaryCta: { label: "Explore Interface", href: "/#preview" },
+  secondaryCta: { label: "Login", href: "/login" },
   highlights: [
     "Admissions to Certificates",
     "Multi-Branch Ready",

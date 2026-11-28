@@ -4,9 +4,12 @@ import { requireSessionUser } from "@/lib/security/session";
 import {
   createFinanceAccount,
   createFinanceCategory,
+  deleteFinanceAccount,
   deleteFinanceCategory,
   listFinanceAccountsAndLedger,
   recordLedgerEntry,
+  reverseLedgerEntry,
+  updateFinanceAccount,
 } from "@/services/institute-finance.service";
 import { handleApiError, jsonError, jsonOk } from "@/lib/utils/api-response";
 
@@ -26,6 +29,23 @@ const postSchema = z.discriminatedUnion("action", [
     name: z.string().trim().min(2).max(80),
     accountType: z.enum(["cash", "bank", "upi"]),
     openingBalanceRupees: z.coerce.number().min(0).optional(),
+  }),
+  z.object({
+    action: z.literal("update_account"),
+    accountId: z.string().min(1),
+    name: z.string().trim().min(2).max(80).optional(),
+    accountType: z.enum(["cash", "bank", "upi"]).optional(),
+    status: z.enum(["active", "inactive"]).optional(),
+  }),
+  z.object({
+    action: z.literal("delete_account"),
+    accountId: z.string().min(1),
+    reason: z.string().trim().min(3).max(200).default("Deleted by administrator"),
+  }),
+  z.object({
+    action: z.literal("reverse_entry"),
+    entryId: z.string().min(1),
+    reason: z.string().trim().min(3).max(200),
   }),
   z.object({
     action: z.literal("record_entry"),
@@ -78,6 +98,18 @@ export async function POST(request: NextRequest) {
     if (d.action === "create_account") {
       const account = await createFinanceAccount(actor, d);
       return jsonOk({ account }, 201);
+    }
+    if (d.action === "update_account") {
+      const account = await updateFinanceAccount(actor, d.accountId, d);
+      return jsonOk({ account });
+    }
+    if (d.action === "delete_account") {
+      const result = await deleteFinanceAccount(actor, d.accountId, d.reason);
+      return jsonOk(result);
+    }
+    if (d.action === "reverse_entry") {
+      const result = await reverseLedgerEntry(actor, d.entryId, d.reason);
+      return jsonOk(result);
     }
     const entry = await recordLedgerEntry(actor, d);
     return jsonOk({ entry }, 201);

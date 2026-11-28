@@ -126,6 +126,8 @@ export interface FeePaymentRecord {
   note: string;
   collectedByUid: string;
   paidAt: string;
+  status?: "posted" | "reversed";
+  reversalRef?: string | null;
   createdAt: string;
 }
 

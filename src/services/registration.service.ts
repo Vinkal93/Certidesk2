@@ -9,6 +9,7 @@ import { AuthError } from "@/lib/security/session";
 import { generateId, generateInstituteCode } from "@/lib/utils/ids";
 import { getEffectivePlatformPricing } from "./su-platform.service";
 import { recordAuditLog } from "./audit.service";
+import { ensureDefaultInstituteAccounts } from "./institute-finance.service";
 import type { PublicRegisterInput } from "@/lib/validation/registration";
 import type { SessionUser } from "@/types/auth";
 import type { InstituteRecord, OnboardingStatus } from "@/types/domain";
@@ -187,6 +188,8 @@ export async function registerPublicInstitute(
         updatedAt: now,
       });
     });
+
+    await ensureDefaultInstituteAccounts(instituteId).catch(() => undefined);
 
     await recordAuditLog({
       action: "INSTITUTE_SELF_REGISTERED",

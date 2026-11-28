@@ -544,13 +544,19 @@ export function FeeCollectClient({
               <Select
                 label="Payment Method"
                 value={method}
-                onChange={(e) => setMethod(e.target.value as FeePaymentMethod)}
+                onChange={(e) => {
+                  const next = e.target.value as FeePaymentMethod;
+                  setMethod(next);
+                  const wantType = next === "cash" ? "cash" : "bank";
+                  const match = accounts.find(
+                    (a) => a.accountType === wantType && a.status === "active"
+                  );
+                  if (match) setAccountId(match.id);
+                }}
                 options={[
                   { label: "Cash", value: "cash" },
+                  { label: "Bank", value: "bank_transfer" },
                   { label: "UPI", value: "upi" },
-                  { label: "Bank Transfer", value: "bank_transfer" },
-                  { label: "Card", value: "card" },
-                  { label: "Other", value: "other" },
                 ]}
               />
             </div>
@@ -571,16 +577,18 @@ export function FeeCollectClient({
                 onChange={(e) => setReference(e.target.value)}
               />
               <Select
-                label="Deposit Account (Optional)"
+                label="Deposit Account (Cash / Bank)"
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
                 options={
                   accounts.length === 0
-                    ? [{ label: "Default Cash/Bank Ledger", value: "" }]
-                    : accounts.map((a) => ({
-                        label: `${a.name} (${a.accountType.toUpperCase()})`,
-                        value: a.id,
-                      }))
+                    ? [{ label: "Default Cash/Bank Account", value: "" }]
+                    : accounts
+                        .filter((a) => a.status === "active")
+                        .map((a) => ({
+                          label: `${a.name} (${a.accountType.toUpperCase()})`,
+                          value: a.id,
+                        }))
                 }
               />
             </div>
