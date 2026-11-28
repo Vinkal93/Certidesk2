@@ -11,7 +11,7 @@ import {
   Power,
   Trash2,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge, StatusChip } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -713,17 +713,7 @@ export function FeeReminderSettingsClient({
                           </td>
                           <td className="px-3 py-2">{d.dueDate}</td>
                           <td className="px-3 py-2">
-                            <Badge
-                              variant={
-                                d.status === "resolved_paid"
-                                  ? "success"
-                                  : d.status === "delivered"
-                                    ? "warning"
-                                    : "outline"
-                              }
-                            >
-                              {d.status.replace(/_/g, " ")}
-                            </Badge>
+                            <StatusChip status={d.status} />
                           </td>
                         </tr>
                       ))
