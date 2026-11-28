@@ -6,7 +6,7 @@ import { questionItemSchema } from "@/lib/validation/question-bank";
 import { handleApiError, jsonError, jsonOk } from "@/lib/utils/api-response";
 
 const importPayloadSchema = z.object({
-  questions: z.array(questionItemSchema).min(1).max(500),
+  questions: z.array(questionItemSchema).min(1).max(2500),
 });
 
 export async function POST(request: NextRequest) {

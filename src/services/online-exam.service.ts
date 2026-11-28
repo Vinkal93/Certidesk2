@@ -1,4 +1,5 @@
 import "server-only";
+import { randomInt } from "node:crypto";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { institutesCollection, studentsCollection } from "@/lib/firebase/firestore";
 import { hasStaffPermission } from "@/lib/security/permissions";
@@ -8,11 +9,15 @@ import { generateId } from "@/lib/utils/ids";
 import { recordAuditLog } from "./audit.service";
 import { computeGradeAndResult } from "./exam.service";
 import type { CollectionReference } from "firebase-admin/firestore";
+import type { BatchRecord } from "@/types/academic";
 import type { SessionUser } from "@/types/auth";
 import type {
+  BatchComparisonRow,
   ExamAttemptRecord,
+  ExamQuestionAnalysisItem,
   ExamQuestionSnapshotItem,
   ExamResultRecord,
+  OnlineExamAnalyticsSummary,
   OnlineExamRecord,
   OnlineExamStatus,
   QuestionBankRecord,
@@ -21,6 +26,10 @@ import type {
   QuestionType,
   ResultRevisionRecord,
 } from "@/types/online-exam";
+
+function batchesCol() {
+  return getAdminFirestore().collection("batches") as CollectionReference<BatchRecord>;
+}
 
 function questionBankCol() {
   return getAdminFirestore().collection(
@@ -53,6 +62,54 @@ function resultRevisionsCol() {
 }
 
 /**
+ * Unbiased Fisher-Yates shuffle using Node crypto.randomInt.
+ */
+export function shuffleArray<T>(items: readonly T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = randomInt(0, i + 1);
+    const tmp = arr[i]!;
+    arr[i] = arr[j]!;
+    arr[j] = tmp;
+  }
+  return arr;
+}
+
+/**
+ * Selects `count` unique random questions from an active question pool.
+ */
+export function selectUniqueRandomQuestions(
+  pool: readonly QuestionBankRecord[],
+  count: number
+): QuestionBankRecord[] {
+  if (count <= 0) return [];
+  if (pool.length <= count) return shuffleArray(pool);
+  return shuffleArray(pool).slice(0, count);
+}
+
+/**
+ * Builds a per-student question snapshot from the exam's frozen question set.
+ * Shuffles question order and/or option order independently per student while
+ * preserving each option's `id` so grading remains 100% accurate.
+ */
+export function buildShuffledStudentSnapshot(
+  questions: readonly QuestionBankRecord[],
+  randomizeQuestions: boolean,
+  randomizeOptions: boolean
+): ExamQuestionSnapshotItem[] {
+  const orderedQuestions = randomizeQuestions ? shuffleArray(questions) : [...questions];
+  return orderedQuestions.map((q) => ({
+    questionId: q.id,
+    questionText: q.questionText,
+    questionType: q.questionType,
+    subject: q.subject,
+    options: randomizeOptions ? shuffleArray(q.options) : [...q.options],
+    marks: q.marks,
+    negativeMarks: q.negativeMarks,
+  }));
+}
+
+/**
  * Pure server-side MCQ grading helper. Exported for unit testing.
  * Never trusts client-submitted scores or unvalidated option IDs.
  */
@@ -61,12 +118,14 @@ export function gradeMcqAttempt(params: {
   answerKeyByQuestionId: Map<string, string[]>;
   submittedAnswers: Record<string, string[]>;
   negativeMarkingEnabled: boolean;
+  negativeMarkingPerQuestion?: number | undefined;
   maxMarks: number;
   passingMarks: number;
 }): {
   correctCount: number;
   incorrectCount: number;
   unansweredCount: number;
+  attemptedCount: number;
   obtainedMarks: number;
   percentage: number;
   grade: string;
@@ -99,8 +158,14 @@ export function gradeMcqAttempt(params: {
       rawMarks += q.marks;
     } else {
       incorrectCount += 1;
-      if (params.negativeMarkingEnabled && q.negativeMarks > 0) {
-        rawMarks -= q.negativeMarks;
+      if (params.negativeMarkingEnabled) {
+        const penalty =
+          q.negativeMarks > 0
+            ? q.negativeMarks
+            : (params.negativeMarkingPerQuestion ?? 0);
+        if (penalty > 0) {
+          rawMarks -= penalty;
+        }
       }
     }
   }
@@ -120,6 +185,7 @@ export function gradeMcqAttempt(params: {
     correctCount,
     incorrectCount,
     unansweredCount,
+    attemptedCount: correctCount + incorrectCount,
     obtainedMarks,
     percentage,
     grade,
@@ -371,6 +437,17 @@ export async function listOnlineExams(actor: SessionUser) {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+function matchesQuestionPool(q: QuestionBankRecord, poolTag: string): boolean {
+  if (q.status !== "active") return false;
+  const tag = poolTag.trim().toLowerCase();
+  if (!tag || tag === "__all__" || tag === "all") return true;
+  const course = (q.courseName ?? "").trim().toLowerCase();
+  const subject = q.subject.trim().toLowerCase();
+  return (
+    course === tag || subject === tag || course.includes(tag) || tag.includes(course)
+  );
+}
+
 export async function createOnlineExam(
   actor: SessionUser,
   input: {
@@ -379,8 +456,10 @@ export async function createOnlineExam(
     description?: string | undefined;
     courseId: string;
     courseName: string;
+    questionPoolTag?: string | undefined;
     batchIds: string[];
     instructions?: string | undefined;
+    questionCount?: number | undefined;
     maxMarks: number;
     passingMarks: number;
     durationMinutes: number;
@@ -391,6 +470,8 @@ export async function createOnlineExam(
     randomizeQuestions?: boolean | undefined;
     randomizeOptions?: boolean | undefined;
     negativeMarkingEnabled?: boolean | undefined;
+    negativeMarkingPerQuestion?: number | undefined;
+    allowStudentAnswerReview?: boolean | undefined;
   }
 ): Promise<OnlineExamRecord> {
   if (!hasStaffPermission(actor, "exams:write")) {
@@ -399,7 +480,31 @@ export async function createOnlineExam(
   if (input.batchIds.length === 0) {
     throw new AuthError(400, "BATCH_REQUIRED", "Assign at least one eligible batch.");
   }
+  if (input.passingMarks > input.maxMarks) {
+    throw new AuthError(
+      400,
+      "INVALID_MARKS",
+      "Passing marks cannot exceed maximum marks."
+    );
+  }
   const institute = await resolveAuthorizedInstitute(actor);
+  const poolTag = (input.questionPoolTag ?? input.courseName).trim();
+  const requestedCount = input.questionCount ?? input.questionIds?.length ?? 0;
+
+  if (requestedCount > 0 && (!input.questionIds || input.questionIds.length === 0)) {
+    const qSnap = await questionBankCol().where("instituteId", "==", institute.id).get();
+    const eligibleCount = qSnap.docs
+      .map((d) => d.data())
+      .filter((q) => matchesQuestionPool(q, poolTag)).length;
+    if (eligibleCount < requestedCount) {
+      throw new AuthError(
+        400,
+        "INSUFFICIENT_QUESTIONS",
+        `Question bank for "${poolTag}" has only ${eligibleCount} active question(s), but ${requestedCount} were requested.`
+      );
+    }
+  }
+
   const now = new Date().toISOString();
   const id = generateId("OEX");
 
@@ -411,11 +516,13 @@ export async function createOnlineExam(
     description: input.description?.trim() ?? "",
     courseId: input.courseId,
     courseName: input.courseName,
+    questionPoolTag: poolTag,
     batchIds: input.batchIds,
     examType: "mcq",
     instructions:
       input.instructions?.trim() ||
       "Read each question carefully. Answers are autosaved automatically.",
+    questionCount: requestedCount > 0 ? requestedCount : undefined,
     maxMarks: input.maxMarks,
     passingMarks: input.passingMarks,
     durationMinutes: input.durationMinutes,
@@ -424,12 +531,15 @@ export async function createOnlineExam(
     timezone: "Asia/Kolkata",
     allowedAttempts: input.allowedAttempts ?? 1,
     questionIds: input.questionIds ?? [],
-    randomizeQuestions: input.randomizeQuestions ?? false,
-    randomizeOptions: input.randomizeOptions ?? false,
+    randomizeQuestions: input.randomizeQuestions ?? true,
+    randomizeOptions: input.randomizeOptions ?? true,
     negativeMarkingEnabled: input.negativeMarkingEnabled ?? false,
+    negativeMarkingPerQuestion: input.negativeMarkingPerQuestion ?? 0,
+    allowStudentAnswerReview: input.allowStudentAnswerReview ?? true,
     status: "draft",
     resultsDeclaredAt: null,
     resultsDeclaredByUid: null,
+    cancelledAt: null,
     resultVersion: 1,
     createdBy: actor.uid,
     createdAt: now,
@@ -443,7 +553,12 @@ export async function createOnlineExam(
     actorRole: actor.role,
     instituteId: institute.id,
     targetId: id,
-    metadata: { title: record.title, code: record.code },
+    metadata: {
+      title: record.title,
+      code: record.code,
+      questionCount: requestedCount,
+      questionPoolTag: poolTag,
+    },
   });
   return record;
 }
@@ -459,28 +574,111 @@ export async function getOnlineExamDetails(actor: SessionUser, examId: string) {
     throw new AuthError(404, "EXAM_NOT_FOUND", "Examination not found.");
   }
 
-  const [attemptsSnap, resultsSnap] = await Promise.all([
+  const [attemptsSnap, resultsSnap, batchesSnap] = await Promise.all([
     examAttemptsCol().where("examId", "==", exam.id).get(),
     examResultsCol().where("examId", "==", exam.id).get(),
+    batchesCol().where("instituteId", "==", institute.id).get(),
   ]);
+
+  const attempts = attemptsSnap.docs.map((d) => d.data());
+  const batchNameById = new Map(
+    batchesSnap.docs.map((d) => [d.id, d.data().name] as const)
+  );
+
+  // Sort by marks desc, then timeTaken asc for merit list / rank
+  const rankedResults = resultsSnap.docs
+    .map((d) => d.data())
+    .sort((a, b) => {
+      if (b.obtainedMarks !== a.obtainedMarks) return b.obtainedMarks - a.obtainedMarks;
+      return (a.timeTakenSeconds ?? 999999) - (b.timeTakenSeconds ?? 999999);
+    })
+    .map((r, index) => ({
+      ...r,
+      rank: index + 1,
+    }));
+
+  const marksList = rankedResults.map((r) => r.obtainedMarks);
+  const highestMarks = marksList.length > 0 ? Math.max(...marksList) : 0;
+  const lowestMarks = marksList.length > 0 ? Math.min(...marksList) : 0;
+  const averageMarks =
+    marksList.length > 0
+      ? Number((marksList.reduce((acc, v) => acc + v, 0) / marksList.length).toFixed(2))
+      : 0;
+  const passedTotal = rankedResults.filter((r) => r.passed).length;
+  const passPercentage =
+    rankedResults.length > 0
+      ? Number(((passedTotal / rankedResults.length) * 100).toFixed(2))
+      : 0;
+
+  const byBatch = new Map<string, ExamResultRecord[]>();
+  for (const r of rankedResults) {
+    const key = r.batchId || "unassigned";
+    const list = byBatch.get(key) ?? [];
+    list.push(r);
+    byBatch.set(key, list);
+  }
+
+  const batchComparison: BatchComparisonRow[] = Array.from(byBatch.entries()).map(
+    ([batchId, items]) => {
+      const bMarks = items.map((i) => i.obtainedMarks);
+      const bPassed = items.filter((i) => i.passed).length;
+      return {
+        batchId,
+        batchName: batchNameById.get(batchId) ?? (batchId || "Default Batch"),
+        submittedCount: items.length,
+        passedCount: bPassed,
+        passPercentage:
+          items.length > 0 ? Number(((bPassed / items.length) * 100).toFixed(2)) : 0,
+        averageMarks:
+          bMarks.length > 0
+            ? Number((bMarks.reduce((a, b) => a + b, 0) / bMarks.length).toFixed(2))
+            : 0,
+        highestMarks: bMarks.length > 0 ? Math.max(...bMarks) : 0,
+        lowestMarks: bMarks.length > 0 ? Math.min(...bMarks) : 0,
+      };
+    }
+  );
+
+  const analytics: OnlineExamAnalyticsSummary = {
+    totalResults: rankedResults.length,
+    submittedAttempts: attempts.filter((a) => a.status !== "in_progress").length,
+    inProgressAttempts: attempts.filter((a) => a.status === "in_progress").length,
+    highestMarks,
+    lowestMarks,
+    averageMarks,
+    passPercentage,
+    batchComparison,
+  };
 
   return {
     exam,
-    attempts: attemptsSnap.docs.map((d) => d.data()),
-    results: resultsSnap.docs.map((d) => d.data()),
+    attempts,
+    results: rankedResults,
+    analytics,
+    batchNames: Object.fromEntries(batchNameById.entries()),
   };
 }
 
 export async function updateOnlineExam(
   actor: SessionUser,
   examId: string,
-  patch: Partial<{
-    questionIds: string[];
-    status: OnlineExamStatus;
-    windowStartAt: string;
-    windowEndAt: string;
-    durationMinutes: number;
-  }>
+  patch: {
+    title?: string | undefined;
+    questionIds?: string[] | undefined;
+    questionCount?: number | undefined;
+    questionPoolTag?: string | undefined;
+    batchIds?: string[] | undefined;
+    instructions?: string | undefined;
+    passingMarks?: number | undefined;
+    maxMarks?: number | undefined;
+    negativeMarkingEnabled?: boolean | undefined;
+    negativeMarkingPerQuestion?: number | undefined;
+    allowStudentAnswerReview?: boolean | undefined;
+    status?: OnlineExamStatus | undefined;
+    windowStartAt?: string | undefined;
+    windowEndAt?: string | undefined;
+    durationMinutes?: number | undefined;
+  }
 ): Promise<OnlineExamRecord> {
   if (!hasStaffPermission(actor, "exams:write")) {
     throw new AuthError(403, "FORBIDDEN", "Missing exams:write permission.");
@@ -493,12 +691,69 @@ export async function updateOnlineExam(
     throw new AuthError(404, "EXAM_NOT_FOUND", "Examination not found.");
   }
 
+  let resolvedQuestionIds = patch.questionIds ?? existing.questionIds;
+  let resolvedMaxMarks = patch.maxMarks ?? existing.maxMarks;
+
+  // When publishing for the first time with no frozen question snapshot,
+  // automatically select unique random questions ONCE and freeze them forever.
+  if (patch.status === "published" && resolvedQuestionIds.length === 0) {
+    const poolTag =
+      patch.questionPoolTag ?? existing.questionPoolTag ?? existing.courseName;
+    const targetCount = patch.questionCount ?? existing.questionCount ?? 20;
+    const qSnap = await questionBankCol().where("instituteId", "==", institute.id).get();
+    const eligiblePool = qSnap.docs
+      .map((d) => d.data())
+      .filter((q) => matchesQuestionPool(q, poolTag));
+
+    if (eligiblePool.length < targetCount) {
+      throw new AuthError(
+        400,
+        "INSUFFICIENT_QUESTIONS",
+        `Cannot publish: Question bank for "${poolTag}" has ${eligiblePool.length} active question(s), but ${targetCount} are required.`
+      );
+    }
+
+    const selected = selectUniqueRandomQuestions(eligiblePool, targetCount);
+    resolvedQuestionIds = selected.map((q) => q.id);
+    if (resolvedMaxMarks <= 0) {
+      resolvedMaxMarks = selected.reduce((sum, q) => sum + q.marks, 0);
+    }
+  }
+
+  const now = new Date().toISOString();
+  const cleanPatch = Object.fromEntries(
+    Object.entries(patch).filter(([, v]) => v !== undefined)
+  ) as Partial<OnlineExamRecord>;
+
   const next: OnlineExamRecord = {
     ...existing,
-    ...patch,
-    updatedAt: new Date().toISOString(),
+    ...cleanPatch,
+    questionIds: resolvedQuestionIds,
+    maxMarks: resolvedMaxMarks,
+    cancelledAt: patch.status === "cancelled" ? now : (existing.cancelledAt ?? null),
+    updatedAt: now,
   };
   await ref.set(next);
+
+  if (patch.status) {
+    await recordAuditLog({
+      action:
+        patch.status === "published"
+          ? "ONLINE_EXAM_PUBLISHED"
+          : patch.status === "cancelled"
+            ? "ONLINE_EXAM_CANCELLED"
+            : "ONLINE_EXAM_UPDATED",
+      actorUid: actor.uid,
+      actorRole: actor.role,
+      instituteId: institute.id,
+      targetId: examId,
+      metadata: {
+        status: patch.status,
+        frozenQuestionCount: resolvedQuestionIds.length,
+      },
+    });
+  }
+
   return next;
 }
 
@@ -569,6 +824,258 @@ export async function declareOnlineExamResults(
   });
 
   return { declaredCount: resultsSnap.size };
+}
+
+export async function hideOnlineExamResults(
+  actor: SessionUser,
+  examId: string
+): Promise<{ hiddenCount: number }> {
+  if (!hasStaffPermission(actor, "exams:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing exams:write permission.");
+  }
+  const institute = await resolveAuthorizedInstitute(actor);
+  const examRef = onlineExamsCol().doc(examId);
+  const examSnap = await examRef.get();
+  const exam = examSnap.data();
+  if (!examSnap.exists || !exam || exam.instituteId !== institute.id) {
+    throw new AuthError(404, "EXAM_NOT_FOUND", "Examination not found.");
+  }
+
+  const resultsSnap = await examResultsCol().where("examId", "==", exam.id).get();
+  const now = new Date().toISOString();
+  const db = getAdminFirestore();
+  const batch = db.batch();
+
+  for (const doc of resultsSnap.docs) {
+    batch.update(doc.ref, { declared: false });
+  }
+  batch.update(examRef, {
+    status: "results_ready",
+    updatedAt: now,
+  });
+
+  await batch.commit();
+
+  await recordAuditLog({
+    action: "ONLINE_EXAM_RESULTS_HIDDEN",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: institute.id,
+    targetId: exam.id,
+    metadata: { hiddenCount: resultsSnap.size },
+  });
+
+  return { hiddenCount: resultsSnap.size };
+}
+
+export async function reevaluateOnlineExamResults(
+  actor: SessionUser,
+  examId: string,
+  reason: string
+): Promise<{ reevaluatedCount: number; updatedCount: number }> {
+  if (!hasStaffPermission(actor, "exams:write")) {
+    throw new AuthError(403, "FORBIDDEN", "Missing exams:write permission.");
+  }
+  const institute = await resolveAuthorizedInstitute(actor);
+  const examRef = onlineExamsCol().doc(examId);
+  const examSnap = await examRef.get();
+  const exam = examSnap.data();
+  if (!examSnap.exists || !exam || exam.instituteId !== institute.id) {
+    throw new AuthError(404, "EXAM_NOT_FOUND", "Examination not found.");
+  }
+
+  const [qSnap, attemptsSnap, resultsSnap] = await Promise.all([
+    questionBankCol().where("instituteId", "==", institute.id).get(),
+    examAttemptsCol().where("examId", "==", exam.id).get(),
+    examResultsCol().where("examId", "==", exam.id).get(),
+  ]);
+
+  const answerKeys = new Map<string, string[]>();
+  for (const doc of qSnap.docs) {
+    answerKeys.set(doc.id, doc.data().correctOptionIds);
+  }
+
+  const attemptById = new Map(attemptsSnap.docs.map((d) => [d.id, d.data()]));
+  const now = new Date().toISOString();
+  const db = getAdminFirestore();
+  const batch = db.batch();
+  let updatedCount = 0;
+
+  for (const resDoc of resultsSnap.docs) {
+    const existing = resDoc.data();
+    const attempt = attemptById.get(existing.attemptId);
+    if (!attempt) continue;
+
+    const graded = gradeMcqAttempt({
+      snapshot: attempt.questionSnapshot,
+      answerKeyByQuestionId: answerKeys,
+      submittedAnswers: attempt.answers,
+      negativeMarkingEnabled: exam.negativeMarkingEnabled,
+      negativeMarkingPerQuestion: exam.negativeMarkingPerQuestion,
+      maxMarks: exam.maxMarks,
+      passingMarks: exam.passingMarks,
+    });
+
+    if (graded.obtainedMarks !== existing.obtainedMarks) {
+      updatedCount += 1;
+      const revId = generateId("REV");
+      const revision: ResultRevisionRecord = {
+        id: revId,
+        instituteId: institute.id,
+        examId: exam.id,
+        resultId: existing.id,
+        studentId: existing.studentId,
+        oldMarks: existing.obtainedMarks,
+        newMarks: graded.obtainedMarks,
+        reason: reason.trim() || "Bulk re-evaluation",
+        actorUid: actor.uid,
+        createdAt: now,
+      };
+      batch.set(resultRevisionsCol().doc(revId), revision);
+    }
+
+    batch.update(resDoc.ref, {
+      correctCount: graded.correctCount,
+      incorrectCount: graded.incorrectCount,
+      unansweredCount: graded.unansweredCount,
+      attemptedCount: graded.attemptedCount,
+      obtainedMarks: graded.obtainedMarks,
+      percentage: graded.percentage,
+      grade: graded.grade,
+      passed: graded.passed,
+      gradingVersion: existing.gradingVersion + 1,
+      evaluatedAt: now,
+    });
+  }
+
+  batch.update(examRef, {
+    resultVersion: (exam.resultVersion ?? 1) + 1,
+    updatedAt: now,
+  });
+
+  await batch.commit();
+
+  await recordAuditLog({
+    action: "ONLINE_EXAM_REEVALUATED",
+    actorUid: actor.uid,
+    actorRole: actor.role,
+    instituteId: institute.id,
+    targetId: exam.id,
+    metadata: {
+      reevaluatedCount: resultsSnap.size,
+      updatedCount,
+      reason: reason.trim(),
+    },
+  });
+
+  return { reevaluatedCount: resultsSnap.size, updatedCount };
+}
+
+export async function getExamAttemptAnalysis(
+  actor: SessionUser,
+  examId: string,
+  attemptId: string
+): Promise<{
+  exam: OnlineExamRecord;
+  attempt: ExamAttemptRecord;
+  result: ExamResultRecord | null;
+  analysis: ExamQuestionAnalysisItem[];
+}> {
+  let instituteId: string;
+  let isStudent = false;
+  if (actor.role === "student") {
+    const { student, institute } = await resolveVerifiedStudent(actor);
+    instituteId = institute.id;
+    isStudent = true;
+    const attemptSnap = await examAttemptsCol().doc(attemptId).get();
+    const attempt = attemptSnap.data();
+    if (
+      !attemptSnap.exists ||
+      !attempt ||
+      attempt.studentId !== student.id ||
+      attempt.instituteId !== instituteId ||
+      attempt.examId !== examId
+    ) {
+      throw new AuthError(404, "ATTEMPT_NOT_FOUND", "Exam attempt not found.");
+    }
+  } else {
+    if (!hasStaffPermission(actor, "exams:read")) {
+      throw new AuthError(403, "FORBIDDEN", "Missing exams:read permission.");
+    }
+    const institute = await resolveAuthorizedInstitute(actor);
+    instituteId = institute.id;
+  }
+
+  const [examSnap, attemptSnap, resultsSnap, qSnap] = await Promise.all([
+    onlineExamsCol().doc(examId).get(),
+    examAttemptsCol().doc(attemptId).get(),
+    examResultsCol().where("attemptId", "==", attemptId).get(),
+    questionBankCol().where("instituteId", "==", instituteId).get(),
+  ]);
+
+  const exam = examSnap.data();
+  const attempt = attemptSnap.data();
+  const result = resultsSnap.docs[0]?.data() ?? null;
+
+  if (!examSnap.exists || !exam || exam.instituteId !== instituteId) {
+    throw new AuthError(404, "EXAM_NOT_FOUND", "Examination not found.");
+  }
+  if (!attemptSnap.exists || !attempt || attempt.instituteId !== instituteId) {
+    throw new AuthError(404, "ATTEMPT_NOT_FOUND", "Attempt not found.");
+  }
+  if (isStudent && (!result?.declared || exam.allowStudentAnswerReview === false)) {
+    throw new AuthError(
+      403,
+      "REVIEW_NOT_AVAILABLE",
+      "Answer analysis is only available after results are declared."
+    );
+  }
+
+  const qMap = new Map(qSnap.docs.map((d) => [d.id, d.data()]));
+  const analysis: ExamQuestionAnalysisItem[] = attempt.questionSnapshot.map((item) => {
+    const fullQ = qMap.get(item.questionId);
+    const selected = attempt.answers[item.questionId] ?? [];
+    const correct = fullQ?.correctOptionIds ?? [];
+    const expectedSet = new Set(correct);
+    const selectedSet = new Set(selected);
+    const isAttempted = selected.length > 0;
+    const isCorrect =
+      isAttempted &&
+      expectedSet.size > 0 &&
+      selectedSet.size === expectedSet.size &&
+      Array.from(expectedSet).every((id) => selectedSet.has(id));
+
+    let marksAwarded = 0;
+    if (isAttempted) {
+      if (isCorrect) {
+        marksAwarded = item.marks;
+      } else if (exam.negativeMarkingEnabled) {
+        const penalty =
+          item.negativeMarks > 0
+            ? item.negativeMarks
+            : (exam.negativeMarkingPerQuestion ?? 0);
+        marksAwarded = -penalty;
+      }
+    }
+
+    return {
+      questionId: item.questionId,
+      questionText: item.questionText,
+      subject: item.subject,
+      topic: fullQ?.topic ?? "General",
+      difficulty: fullQ?.difficulty ?? "medium",
+      options: item.options,
+      selectedOptionIds: selected,
+      correctOptionIds: correct,
+      isCorrect,
+      isAttempted,
+      marksAwarded,
+      maxMarks: item.marks,
+      explanation: fullQ?.explanation ?? "",
+    };
+  });
+
+  return { exam, attempt, result, analysis };
 }
 
 export async function reviseExamResultMarks(
@@ -738,18 +1245,15 @@ export async function startStudentExamAttempt(
 
   const qSnap = await questionBankCol().where("instituteId", "==", institute.id).get();
   const qMap = new Map(qSnap.docs.map((d) => [d.id, d.data()]));
-  const snapshot: ExamQuestionSnapshotItem[] = exam.questionIds
+  const selectedQuestions: QuestionBankRecord[] = exam.questionIds
     .map((qId) => qMap.get(qId))
-    .filter((q): q is QuestionBankRecord => Boolean(q && q.status === "active"))
-    .map((q) => ({
-      questionId: q.id,
-      questionText: q.questionText,
-      questionType: q.questionType,
-      subject: q.subject,
-      options: q.options,
-      marks: q.marks,
-      negativeMarks: q.negativeMarks,
-    }));
+    .filter((q): q is QuestionBankRecord => Boolean(q && q.status === "active"));
+
+  const snapshot = buildShuffledStudentSnapshot(
+    selectedQuestions,
+    exam.randomizeQuestions ?? true,
+    exam.randomizeOptions ?? true
+  );
 
   if (snapshot.length === 0) {
     throw new AuthError(
@@ -836,7 +1340,7 @@ export async function autosaveOrSubmitAttempt(
     };
   }
 
-  // Finalize & grade server-side
+  // Finalize & grade server-side inside an atomic transaction to prevent duplicate submissions
   const examSnap = await onlineExamsCol().doc(attempt.examId).get();
   const exam = examSnap.data();
   if (!exam) {
@@ -854,12 +1358,17 @@ export async function autosaveOrSubmitAttempt(
     answerKeyByQuestionId: answerKeys,
     submittedAnswers: mergedAnswers,
     negativeMarkingEnabled: exam.negativeMarkingEnabled,
+    negativeMarkingPerQuestion: exam.negativeMarkingPerQuestion,
     maxMarks: exam.maxMarks,
     passingMarks: exam.passingMarks,
   });
 
   const finalStatus = expired ? "auto_submitted" : "submitted";
-  const resultId = generateId("ERS");
+  const timeTakenSeconds = Math.max(
+    0,
+    Math.round((nowMs - Date.parse(attempt.startedAt)) / 1000)
+  );
+  const resultId = `ERS_${attempt.id}`;
 
   const resultRecord: ExamResultRecord = {
     id: resultId,
@@ -875,30 +1384,44 @@ export async function autosaveOrSubmitAttempt(
     correctCount: graded.correctCount,
     incorrectCount: graded.incorrectCount,
     unansweredCount: graded.unansweredCount,
+    attemptedCount: graded.attemptedCount,
     obtainedMarks: graded.obtainedMarks,
     maxMarks: exam.maxMarks,
     percentage: graded.percentage,
     grade: graded.grade,
     passed: graded.passed,
+    timeTakenSeconds,
+    submittedAt: nowIso,
     evaluationStatus: "evaluated",
     gradingVersion: 1,
-    declared: false,
-    declaredAt: null,
+    declared: exam.status === "results_declared",
+    declaredAt: exam.status === "results_declared" ? nowIso : null,
     declaredByUid: null,
     revisionNumber: 1,
     evaluatedAt: nowIso,
   };
 
-  await Promise.all([
-    attemptRef.update({
+  const db = getAdminFirestore();
+  const txOutcome = await db.runTransaction(async (tx) => {
+    const freshSnap = await tx.get(attemptRef);
+    const fresh = freshSnap.data();
+    if (!freshSnap.exists || !fresh || fresh.status !== "in_progress") {
+      return { alreadySubmitted: true as const, attempt: fresh ?? attempt };
+    }
+    tx.update(attemptRef, {
       answers: mergedAnswers,
       markedForReview: input.markedForReview ?? attempt.markedForReview,
       status: finalStatus,
       submittedAt: nowIso,
       updatedAt: nowIso,
-    }),
-    examResultsCol().doc(resultId).set(resultRecord),
-  ]);
+    });
+    tx.set(examResultsCol().doc(resultId), resultRecord);
+    return { alreadySubmitted: false as const };
+  });
+
+  if (txOutcome.alreadySubmitted) {
+    return { alreadySubmitted: true, attempt: txOutcome.attempt };
+  }
 
   return {
     alreadySubmitted: false,

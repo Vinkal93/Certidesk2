@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle2, Clock, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ResponsiveFormModal } from "@/components/ui/responsive-form-modal";
 import type { ExamAttemptRecord } from "@/types/online-exam";
 
 export function StudentExamRunnerClient({ attempt }: { attempt: ExamAttemptRecord }) {
@@ -20,11 +21,17 @@ export function StudentExamRunnerClient({ attempt }: { attempt: ExamAttemptRecor
   );
   const [saving, setSaving] = React.useState(false);
   const [submitted, setSubmitted] = React.useState(attempt.status !== "in_progress");
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [statusMsg, setStatusMsg] = React.useState<string | null>(null);
 
   const questions = attempt.questionSnapshot;
   const activeQ = questions[currentIdx];
+  const answeredCount = React.useMemo(
+    () => questions.filter((q) => (answers[q.questionId] ?? []).length > 0).length,
+    [answers, questions]
+  );
+  const unansweredCount = questions.length - answeredCount;
 
   const persist = React.useCallback(
     async (action: "autosave" | "submit", nextAnswers = answers, nextMarked = marked) => {
@@ -135,8 +142,9 @@ export function StudentExamRunnerClient({ attempt }: { attempt: ExamAttemptRecor
               </div>
 
               <div className="space-y-2.5">
-                {activeQ.options.map((opt) => {
+                {activeQ.options.map((opt, optIdx) => {
                   const selected = (answers[activeQ.questionId] ?? []).includes(opt.id);
+                  const displayLabel = String.fromCharCode(65 + optIdx);
                   return (
                     <button
                       key={opt.id}
@@ -156,7 +164,7 @@ export function StudentExamRunnerClient({ attempt }: { attempt: ExamAttemptRecor
                       }`}
                     >
                       <span className="border-border inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold">
-                        {opt.id}
+                        {displayLabel}
                       </span>
                       <span>{opt.text}</span>
                     </button>
@@ -187,20 +195,36 @@ export function StudentExamRunnerClient({ attempt }: { attempt: ExamAttemptRecor
                 Next
               </Button>
               {activeQ ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  leftIcon={<Flag className="h-3.5 w-3.5" aria-hidden="true" />}
-                  onClick={() => {
-                    const nextMarked = marked.includes(activeQ.questionId)
-                      ? marked.filter((id) => id !== activeQ.questionId)
-                      : [...marked, activeQ.questionId];
-                    setMarked(nextMarked);
-                    void persist("autosave", answers, nextMarked);
-                  }}
-                >
-                  {marked.includes(activeQ.questionId) ? "Unmark" : "Mark Review"}
-                </Button>
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leftIcon={<Flag className="h-3.5 w-3.5" aria-hidden="true" />}
+                    onClick={() => {
+                      const nextMarked = marked.includes(activeQ.questionId)
+                        ? marked.filter((id) => id !== activeQ.questionId)
+                        : [...marked, activeQ.questionId];
+                      setMarked(nextMarked);
+                      void persist("autosave", answers, nextMarked);
+                    }}
+                  >
+                    {marked.includes(activeQ.questionId) ? "Unmark" : "Mark Review"}
+                  </Button>
+                  {(answers[activeQ.questionId] ?? []).length > 0 ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const nextAns = { ...answers };
+                        delete nextAns[activeQ.questionId];
+                        setAnswers(nextAns);
+                        void persist("autosave", nextAns, marked);
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  ) : null}
+                </>
               ) : null}
             </div>
 
@@ -214,15 +238,7 @@ export function StudentExamRunnerClient({ attempt }: { attempt: ExamAttemptRecor
                 variant="primary"
                 size="sm"
                 loading={saving}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Submit examination now? You cannot change answers after submission."
-                    )
-                  ) {
-                    void persist("submit");
-                  }
-                }}
+                onClick={() => setConfirmOpen(true)}
               >
                 Submit Exam
               </Button>
@@ -234,8 +250,12 @@ export function StudentExamRunnerClient({ attempt }: { attempt: ExamAttemptRecor
       <Card className="lg:col-span-4">
         <CardHeader>
           <CardTitle className="text-sm">Question Palette</CardTitle>
+          <p className="text-muted text-[11px]">
+            Answered: {answeredCount} · Unanswered: {unansweredCount} · Marked:{" "}
+            {marked.length}
+          </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-5 gap-2">
             {questions.map((q, idx) => {
               const isAnswered = (answers[q.questionId] ?? []).length > 0;
@@ -249,9 +269,9 @@ export function StudentExamRunnerClient({ attempt }: { attempt: ExamAttemptRecor
                     idx === currentIdx
                       ? "border-primary bg-primary text-white"
                       : isMarked
-                        ? "border-amber-400 bg-amber-50 text-amber-800"
+                        ? "border-amber-400 bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200"
                         : isAnswered
-                          ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200"
                           : "border-border bg-surface text-foreground"
                   }`}
                 >
@@ -260,8 +280,62 @@ export function StudentExamRunnerClient({ attempt }: { attempt: ExamAttemptRecor
               );
             })}
           </div>
+          <div className="text-muted flex flex-wrap gap-3 text-[11px]">
+            <span className="inline-flex items-center gap-1">
+              <span className="bg-primary inline-block h-2.5 w-2.5 rounded-sm" />
+              Current
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm border border-emerald-400 bg-emerald-100 dark:bg-emerald-900" />
+              Answered
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm border border-amber-400 bg-amber-100 dark:bg-amber-900" />
+              Review
+            </span>
+          </div>
         </CardContent>
       </Card>
+
+      <ResponsiveFormModal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="Confirm Final Submission"
+        subtitle="You cannot modify your answers once submitted."
+      >
+        <div className="space-y-4 text-xs">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="border-border bg-surface rounded-xl border p-3">
+              <p className="text-muted">Answered</p>
+              <p className="text-success mt-1 text-lg font-bold">{answeredCount}</p>
+            </div>
+            <div className="border-border bg-surface rounded-xl border p-3">
+              <p className="text-muted">Unanswered</p>
+              <p className="text-danger mt-1 text-lg font-bold">{unansweredCount}</p>
+            </div>
+            <div className="border-border bg-surface rounded-xl border p-3">
+              <p className="text-muted">Marked</p>
+              <p className="text-foreground mt-1 text-lg font-bold">{marked.length}</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setConfirmOpen(false)}>
+              Continue Exam
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              loading={saving}
+              onClick={() => {
+                setConfirmOpen(false);
+                void persist("submit");
+              }}
+            >
+              Confirm &amp; Submit
+            </Button>
+          </div>
+        </div>
+      </ResponsiveFormModal>
     </div>
   );
 }

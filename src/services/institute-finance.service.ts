@@ -608,6 +608,11 @@ export async function collectInstituteFee(
     },
   });
 
+  const { syncStudentFeeRemindersAfterPayment } = await import("./fee-reminder.service");
+  await syncStudentFeeRemindersAfterPayment(institute.id, result.plan.studentId).catch(
+    () => undefined
+  );
+
   return result;
 }
 
