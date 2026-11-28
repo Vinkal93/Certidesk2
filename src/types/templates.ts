@@ -1,8 +1,29 @@
-export type TemplateFontFamily = "Helvetica" | "TimesRoman" | "Courier";
+export type TemplateFontFamily =
+  | "Cinzel Decorative"
+  | "Cormorant Garamond"
+  | "Great Vibes"
+  | "Allura"
+  | "Montserrat"
+  | "Libre Baskerville"
+  | "Helvetica"
+  | "TimesRoman"
+  | "Courier";
+
+export type CertificateElementType =
+  | "text"
+  | "placeholder"
+  | "qr_code"
+  | "divider"
+  | "image"
+  | "pill"
+  | "banner"
+  | "ribbon"
+  | "medal"
+  | "seal";
 
 export interface CertificateTemplateElement {
   id: string;
-  type: "text" | "placeholder" | "qr_code" | "divider";
+  type: CertificateElementType;
   label: string;
   content: string;
   xMm: number;
@@ -12,19 +33,33 @@ export interface CertificateTemplateElement {
   fontFamily: TemplateFontFamily;
   fontSizePt: number;
   fontWeight: "normal" | "bold";
+  fontStyle?: "normal" | "italic" | undefined;
   colorHex: string;
+  backgroundColorHex?: string | undefined;
+  borderColorHex?: string | undefined;
   align: "left" | "center" | "right";
-  locked?: boolean;
+  zIndex?: number | undefined;
+  locked?: boolean | undefined;
+  visible?: boolean | undefined;
 }
+
+export type CertificatePresetKey =
+  "sbci_navy_gold" | "classic_academic" | "modern_minimal" | "custom";
 
 export interface CertificateTemplateRecord {
   id: string;
   name: string;
+  presetKey?: CertificatePresetKey | undefined;
   orientation: "landscape" | "portrait";
   widthMm: number;
   heightMm: number;
   backgroundColorHex: string;
   borderColorHex: string;
+  accentColorHex?: string | undefined;
+  secondaryColorHex?: string | undefined;
+  showDoubleGoldBorder?: boolean | undefined;
+  showCornerDecorations?: boolean | undefined;
+  showGuillocheBg?: boolean | undefined;
   watermarkText: string;
   elements: CertificateTemplateElement[];
   status: "draft" | "published" | "archived";
